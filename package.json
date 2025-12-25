@@ -1,0 +1,26 @@
+{
+	"name": "voting-blockchain",
+	"version": "1.0.0",
+	"private": true,
+	"description": "Aplikasi voting berbasis blockchain menggunakan Hyperledger Fabric",
+	"scripts": {
+		"dev:frontend": "pnpm --filter frontend dev",
+		"dev:backend": "pnpm --filter backend dev",
+		"build": "pnpm -r build",
+		"lint": "pnpm -r lint",
+		"test": "pnpm -r test"
+	},
+	"keywords": [
+		"blockchain",
+		"voting",
+		"hyperledger-fabric",
+		"nextjs",
+		"hono"
+	],
+	"author": "",
+	"license": "MIT",
+	"packageManager": "pnpm@9.0.0",
+	"engines": {
+		"node": ">=18.0.0"
+	}
+}

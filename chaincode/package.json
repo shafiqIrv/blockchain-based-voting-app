@@ -1,0 +1,19 @@
+{
+	"name": "chaincode",
+	"version": "1.0.0",
+	"private": true,
+	"main": "dist/index.js",
+	"scripts": {
+		"build": "tsc",
+		"start": "node dist/index.js",
+		"package": "npm run build && npm pack"
+	},
+	"dependencies": {
+		"fabric-contract-api": "^2.5.0",
+		"fabric-shim": "^2.5.0"
+	},
+	"devDependencies": {
+		"@types/node": "^22.0.0",
+		"typescript": "^5.6.0"
+	}
+}

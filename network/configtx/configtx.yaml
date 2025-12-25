@@ -1,0 +1,161 @@
+# Hyperledger Fabric Network Configuration
+# configtx.yaml - Channel configuration for voting network
+
+Organizations:
+    - &OrdererOrg
+      Name: OrdererOrg
+      ID: OrdererMSP
+      MSPDir: ../organizations/ordererOrganizations/voting.com/msp
+      Policies:
+          Readers:
+              Type: Signature
+              Rule: "OR('OrdererMSP.member')"
+          Writers:
+              Type: Signature
+              Rule: "OR('OrdererMSP.member')"
+          Admins:
+              Type: Signature
+              Rule: "OR('OrdererMSP.admin')"
+      OrdererEndpoints:
+          - orderer.voting.com:7050
+
+    - &ITB
+      Name: ITBMSP
+      ID: ITBMSP
+      MSPDir: ../organizations/peerOrganizations/itb.ac.id/msp
+      Policies:
+          Readers:
+              Type: Signature
+              Rule: "OR('ITBMSP.admin', 'ITBMSP.peer', 'ITBMSP.client')"
+          Writers:
+              Type: Signature
+              Rule: "OR('ITBMSP.admin', 'ITBMSP.client')"
+          Admins:
+              Type: Signature
+              Rule: "OR('ITBMSP.admin')"
+          Endorsement:
+              Type: Signature
+              Rule: "OR('ITBMSP.peer')"
+      AnchorPeers:
+          - Host: peer0.itb.ac.id
+            Port: 7051
+
+    - &KPU
+      Name: KPUMSP
+      ID: KPUMSP
+      MSPDir: ../organizations/peerOrganizations/kpu.itb.ac.id/msp
+      Policies:
+          Readers:
+              Type: Signature
+              Rule: "OR('KPUMSP.admin', 'KPUMSP.peer', 'KPUMSP.client')"
+          Writers:
+              Type: Signature
+              Rule: "OR('KPUMSP.admin', 'KPUMSP.client')"
+          Admins:
+              Type: Signature
+              Rule: "OR('KPUMSP.admin')"
+          Endorsement:
+              Type: Signature
+              Rule: "OR('KPUMSP.peer')"
+      AnchorPeers:
+          - Host: peer0.kpu.itb.ac.id
+            Port: 9051
+
+Capabilities:
+    Channel: &ChannelCapabilities
+        V2_0: true
+    Orderer: &OrdererCapabilities
+        V2_0: true
+    Application: &ApplicationCapabilities
+        V2_0: true
+
+Application: &ApplicationDefaults
+    Organizations:
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        LifecycleEndorsement:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Endorsement"
+        Endorsement:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Endorsement"
+    Capabilities:
+        <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+    OrdererType: etcdraft
+    Addresses:
+        - orderer.voting.com:7050
+    EtcdRaft:
+        Consenters:
+            - Host: orderer.voting.com
+              Port: 7050
+              ClientTLSCert: ../organizations/ordererOrganizations/voting.com/orderers/orderer.voting.com/tls/server.crt
+              ServerTLSCert: ../organizations/ordererOrganizations/voting.com/orderers/orderer.voting.com/tls/server.crt
+    BatchTimeout: 2s
+    BatchSize:
+        MaxMessageCount: 10
+        AbsoluteMaxBytes: 99 MB
+        PreferredMaxBytes: 512 KB
+    Organizations:
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        BlockValidation:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+
+Channel: &ChannelDefaults
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+    Capabilities:
+        <<: *ChannelCapabilities
+
+Profiles:
+    VotingOrdererGenesis:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+                - *OrdererOrg
+            Capabilities:
+                <<: *OrdererCapabilities
+        Consortiums:
+            VotingConsortium:
+                Organizations:
+                    - *ITB
+                    - *KPU
+
+    VotingChannel:
+        Consortium: VotingConsortium
+        <<: *ChannelDefaults
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - *ITB
+                - *KPU
+            Capabilities:
+                <<: *ApplicationCapabilities
