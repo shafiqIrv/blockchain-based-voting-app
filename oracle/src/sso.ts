@@ -72,7 +72,11 @@ export class SSOClient {
 			throw new Error("Failed to exchange code for tokens");
 		}
 
-		const data = await response.json();
+		const data = (await response.json()) as {
+			access_token: string;
+			refresh_token?: string;
+			expires_in: number;
+		};
 
 		return {
 			accessToken: data.access_token,
@@ -98,14 +102,24 @@ export class SSOClient {
 			throw new Error("Failed to get user info");
 		}
 
-		const data = await response.json();
+		const data = (await response.json()) as {
+			nim?: string;
+			sub?: string;
+			name: string;
+			email: string;
+			faculty?: string;
+			organizational_unit?: string;
+			major?: string;
+			department?: string;
+			status?: "active" | "inactive" | "graduated";
+		};
 
 		return {
-			nim: data.nim || data.sub,
+			nim: data.nim || data.sub || "",
 			name: data.name,
 			email: data.email,
-			faculty: data.faculty || data.organizational_unit,
-			major: data.major || data.department,
+			faculty: data.faculty || data.organizational_unit || "",
+			major: data.major || data.department || "",
 			status: data.status || "active",
 		};
 	}

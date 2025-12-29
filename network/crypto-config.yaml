@@ -1,0 +1,32 @@
+# Crypto configuration for Hyperledger Fabric network
+# Used by cryptogen tool to generate certificates
+
+OrdererOrgs:
+    - Name: Orderer
+      Domain: voting.com
+      EnableNodeOUs: true
+      Specs:
+          - Hostname: orderer
+            SANS:
+                - localhost
+
+PeerOrgs:
+    - Name: ITB
+      Domain: itb.ac.id
+      EnableNodeOUs: true
+      Template:
+          Count: 1
+          SANS:
+              - localhost
+      Users:
+          Count: 1
+
+    - Name: KPU
+      Domain: kpu.itb.ac.id
+      EnableNodeOUs: true
+      Template:
+          Count: 1
+          SANS:
+              - localhost
+      Users:
+          Count: 1
