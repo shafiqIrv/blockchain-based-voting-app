@@ -18,19 +18,15 @@
 	--glass-shadow: rgba(0, 0, 0, 0.3);
 
 	/* Gradients */
-	--gradient-primary: linear-gradient(
-		135deg,
-		#6366f1 0%,
-		#8b5cf6 50%,
-		#d946ef 100%
-	);
+	--gradient-primary: linear-gradient(135deg,
+			#6366f1 0%,
+			#8b5cf6 50%,
+			#d946ef 100%);
 	--gradient-secondary: linear-gradient(135deg, #22d3ee 0%, #6366f1 100%);
-	--gradient-bg: radial-gradient(
-		ellipse at top,
-		#1a1a2e 0%,
-		#0a0a0f 50%,
-		#000000 100%
-	);
+	--gradient-bg: radial-gradient(ellipse at top,
+			#1a1a2e 0%,
+			#0a0a0f 50%,
+			#000000 100%);
 
 	/* Status Colors */
 	--success: #22c55e;
@@ -53,10 +49,13 @@
 
 html {
 	scroll-behavior: smooth;
+	background-color: #0a0a0f;
+	/* Fallback color */
 }
 
 body {
-	background: var(--gradient-bg);
+	background: transparent;
+	/* Remove gradient from body */
 	color: var(--foreground);
 	font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
 		sans-serif;
@@ -66,6 +65,8 @@ body {
 
 /* Animated Background */
 .animated-bg {
+	background: var(--gradient-bg);
+	background-size: cover;
 	position: fixed;
 	inset: 0;
 	z-index: -1;
@@ -98,16 +99,20 @@ body {
 }
 
 @keyframes float {
+
 	0%,
 	100% {
 		transform: translate(0, 0) scale(1);
 	}
+
 	25% {
 		transform: translate(100px, 50px) scale(1.1);
 	}
+
 	50% {
 		transform: translate(50px, 100px) scale(0.9);
 	}
+
 	75% {
 		transform: translate(-50px, 50px) scale(1.05);
 	}
@@ -347,6 +352,7 @@ body {
 		opacity: 0;
 		transform: translateY(20px);
 	}
+
 	to {
 		opacity: 1;
 		transform: translateY(0);
@@ -358,6 +364,7 @@ body {
 		opacity: 0;
 		transform: translateX(-20px);
 	}
+
 	to {
 		opacity: 1;
 		transform: translateX(0);
@@ -365,10 +372,12 @@ body {
 }
 
 @keyframes pulse {
+
 	0%,
 	100% {
 		opacity: 1;
 	}
+
 	50% {
 		opacity: 0.5;
 	}
@@ -390,12 +399,15 @@ body {
 .stagger-1 {
 	animation-delay: 0.1s;
 }
+
 .stagger-2 {
 	animation-delay: 0.2s;
 }
+
 .stagger-3 {
 	animation-delay: 0.3s;
 }
+
 .stagger-4 {
 	animation-delay: 0.4s;
 }

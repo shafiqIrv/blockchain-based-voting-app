@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 
 interface Major {
     name: string;
@@ -85,8 +86,20 @@ export default function RegisterPage() {
     const currentMajors = faculties.find((f) => f.name === selectedFaculty)?.majors || [];
 
     return (
-        <main className="min-h-screen flex items-center justify-center px-6 bg-gray-900 py-12">
+        <main className="min-h-screen flex items-center justify-center px-6 py-12">
             <div className="glass p-10 max-w-2xl w-full text-center animate-fadeIn border border-white/10 rounded-2xl bg-white/5 backdrop-blur-lg">
+                <div className="w-24 h-24 rounded-2xl bg-white/10 flex items-center justify-center mx-auto mb-6 p-4">
+                    <div className="relative w-full h-full">
+                        <Image
+                            src="/logo.png"
+                            alt="ITB Logo"
+                            fill
+                            className="object-contain"
+                            priority
+                        />
+                    </div>
+                </div>
+
                 <h1 className="text-3xl font-bold text-white mb-2">Create Account</h1>
                 <p className="text-gray-400 mb-8">Register to vote in ITB Election</p>
 

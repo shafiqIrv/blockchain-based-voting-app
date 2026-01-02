@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth } from "@/lib/auth-context";
 
 export default function LoginPage() {
@@ -77,11 +78,19 @@ export default function LoginPage() {
 	}
 
 	return (
-		<main className="min-h-screen flex items-center justify-center px-6 bg-gray-900">
+		<main className="min-h-screen flex items-center justify-center px-6">
 			<div className="glass p-10 max-w-md w-full text-center animate-fadeIn border border-white/10 rounded-2xl bg-white/5 backdrop-blur-lg">
 				{/* Logo */}
-				<div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mx-auto mb-6">
-					<span className="text-4xl">🗳️</span>
+				<div className="w-24 h-24 rounded-2xl bg-white/10 flex items-center justify-center mx-auto mb-6 p-4">
+					<div className="relative w-full h-full">
+						<Image
+							src="/public/logo.png"
+							alt="ITB Logo"
+							fill
+							className="object-contain"
+							priority
+						/>
+					</div>
 				</div>
 
 				<h1 className="text-3xl font-bold text-white mb-2">

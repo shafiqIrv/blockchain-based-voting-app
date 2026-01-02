@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth } from "@/lib/auth-context";
 
 export default function Home() {
@@ -12,10 +13,14 @@ export default function Home() {
 			<header className="fixed top-0 left-0 right-0 z-50 glass-sm">
 				<div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
 					<div className="flex items-center gap-3">
-						<div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-							<span className="text-white font-bold text-lg">
-								🗳️
-							</span>
+						<div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center p-2 relative overflow-hidden">
+							<Image
+								src="/public/logo.png"
+								alt="ITB Logo"
+								fill
+								className="object-contain"
+								priority
+							/>
 						</div>
 						<span className="text-xl font-bold text-white">
 							ITB Voting
