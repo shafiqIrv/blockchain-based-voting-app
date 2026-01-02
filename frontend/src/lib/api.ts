@@ -170,6 +170,18 @@ class ApiClient {
 			body: JSON.stringify({ startDate, endDate }),
 		});
 	}
+
+	getVoters(electionId: string): Promise<Voter[]> {
+		return this.fetch(`/api/election/${electionId}/voters`);
+	}
+}
+
+export interface Voter {
+	nim: string;
+	name: string;
+	faculty: string;
+	role: string;
+	hasVoted: boolean;
 }
 
 export const api = new ApiClient();

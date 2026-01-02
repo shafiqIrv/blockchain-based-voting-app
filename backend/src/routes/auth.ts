@@ -105,6 +105,7 @@ authRoutes.get("/me", async (c) => {
 			name: string;
 			tokenIdentifier: string;
 			electionId: string;
+			role: "admin" | "voter";
 		};
 
 		return c.json({
@@ -112,6 +113,7 @@ authRoutes.get("/me", async (c) => {
 			name: decoded.name,
 			tokenIdentifier: decoded.tokenIdentifier,
 			electionId: decoded.electionId,
+			role: decoded.role,
 		});
 	} catch (err) {
 		return c.json({ error: "Invalid token" }, 401);

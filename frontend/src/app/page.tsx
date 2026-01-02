@@ -32,38 +32,47 @@ export default function Home() {
 							<div className="flex items-center">
 								{/* Group 1: Standard Links */}
 								<div className="flex items-center gap-6">
-									<Link
-										href="/vote"
-										className="text-gray-300 hover:text-white transition"
-									>
-										Vote
-									</Link>
-									<Link
-										href="/verify"
-										className="text-gray-300 hover:text-white transition"
-									>
-										Verify
-									</Link>
-									<Link
-										href="/results"
-										className="text-gray-300 hover:text-white transition"
-									>
-										Results
-									</Link>
+									{user?.role === "admin" ? (
+										<>
+											<Link
+												href="/results"
+												className="text-gray-300 hover:text-white transition"
+											>
+												Results
+											</Link>
+											<div className="h-6 w-px bg-white/20 mx-2"></div>
+											<Link
+												href="/admin"
+												className="text-indigo-400 hover:text-indigo-300 font-medium transition"
+											>
+												Admin
+											</Link>
+										</>
+									) : (
+										<>
+											<Link
+												href="/vote"
+												className="text-gray-300 hover:text-white transition"
+											>
+												Vote
+											</Link>
+											<Link
+												href="/verify"
+												className="text-gray-300 hover:text-white transition"
+											>
+												Verify
+											</Link>
+											<Link
+												href="/results"
+												className="text-gray-300 hover:text-white transition"
+											>
+												Results
+											</Link>
+										</>
+									)}
 								</div>
 
-								{/* Divider & Admin (If applicable) */}
-								{user?.role === "admin" && (
-									<>
-										<div className="h-6 w-px bg-white/20 mx-6"></div>
-										<Link
-											href="/admin"
-											className="text-indigo-400 hover:text-indigo-300 font-medium transition"
-										>
-											Admin
-										</Link>
-									</>
-								)}
+								{/* Admin Link logic moved above, removing this redundant block */}
 
 								{/* Divider */}
 								<div className="h-6 w-px bg-white/20 mx-6"></div>
@@ -128,51 +137,83 @@ export default function Home() {
 						</span>
 					</div>
 
-					<h1 className="text-5xl md:text-7xl font-bold text-white mb-6 animate-fadeIn stagger-1">
-						Secure & Transparent
-						<span className="block text-gradient">
-							Blockchain Voting
-						</span>
-					</h1>
-
-					<p className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto animate-fadeIn stagger-2">
-						Sistem pemilihan berbasis blockchain untuk mahasiswa
-						ITB. Suara Anda terjamin aman, rahasia, dan dapat
-						diverifikasi.
-					</p>
-
-					<div className="flex flex-col sm:flex-row gap-4 justify-center animate-fadeIn stagger-3">
-						{isLoading ? (
-							<div className="flex items-center justify-center gap-3">
-								<div className="spinner"></div>
-								<span className="text-gray-400">
-									Loading...
+					{user?.role === "admin" ? (
+						<>
+							<h1 className="text-5xl md:text-7xl font-bold text-white mb-6 animate-fadeIn stagger-1">
+								Administrator
+								<span className="block text-gradient">
+									Dashboard
 								</span>
-							</div>
-						) : isAuthenticated ? (
-							<>
+							</h1>
+
+							<p className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto animate-fadeIn stagger-2">
+								Pantau jalannya pemilihan, kelola konfigurasi, dan lihat status pemilih secara real-time.
+							</p>
+
+							<div className="flex flex-col sm:flex-row gap-4 justify-center animate-fadeIn stagger-3">
 								<Link
-									href="/vote"
+									href="/admin"
 									className="btn btn-primary text-lg px-8 py-4"
 								>
-									🗳️ Mulai Voting
+									⚙️ Kelola Pemilihan
 								</Link>
 								<Link
-									href="/verify"
+									href="/results"
 									className="btn btn-secondary text-lg px-8 py-4"
 								>
-									🔍 Verifikasi Suara
+									📊 Pantau Hasil
 								</Link>
-							</>
-						) : (
-							<Link
-								href="/login"
-								className="btn btn-primary text-lg px-8 py-4"
-							>
-								Login to Vote
-							</Link>
-						)}
-					</div>
+							</div>
+						</>
+					) : (
+						<>
+							<h1 className="text-5xl md:text-7xl font-bold text-white mb-6 animate-fadeIn stagger-1">
+								Secure & Transparent
+								<span className="block text-gradient">
+									Blockchain Voting
+								</span>
+							</h1>
+
+							<p className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto animate-fadeIn stagger-2">
+								Sistem pemilihan berbasis blockchain untuk mahasiswa
+								ITB. Suara Anda terjamin aman, rahasia, dan dapat
+								diverifikasi.
+							</p>
+
+							<div className="flex flex-col sm:flex-row gap-4 justify-center animate-fadeIn stagger-3">
+								{isLoading ? (
+									<div className="flex items-center justify-center gap-3">
+										<div className="spinner"></div>
+										<span className="text-gray-400">
+											Loading...
+										</span>
+									</div>
+								) : isAuthenticated ? (
+									<>
+										<Link
+											href="/vote"
+											className="btn btn-primary text-lg px-8 py-4"
+										>
+											🗳️ Mulai Voting
+										</Link>
+										<Link
+											href="/verify"
+											className="btn btn-secondary text-lg px-8 py-4"
+										>
+											🔍 Verifikasi Suara
+										</Link>
+									</>
+								) : (
+									<Link
+										href="/login"
+										className="btn btn-primary text-lg px-8 py-4"
+									>
+										Login to Vote
+									</Link>
+								)}
+							</div>
+						</>
+					)}
 				</div>
 			</section>
 

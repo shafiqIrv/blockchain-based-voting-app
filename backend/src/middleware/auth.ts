@@ -6,6 +6,7 @@ export interface AuthUser {
 	name: string;
 	tokenIdentifier: string;
 	electionId: string;
+	role?: "admin" | "voter";
 }
 
 declare module "hono" {

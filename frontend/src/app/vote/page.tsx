@@ -145,6 +145,34 @@ export default function VotePage() {
 		);
 	}
 
+	// Block Admin
+	if (user?.role === "admin") {
+		return (
+			<main className="min-h-screen flex items-center justify-center px-6">
+				<div className="glass p-10 max-w-lg w-full text-center animate-fadeIn">
+					<div className="w-20 h-20 rounded-full bg-indigo-500/20 flex items-center justify-center mx-auto mb-6">
+						<span className="text-4xl">🛡️</span>
+					</div>
+					<h1 className="text-3xl font-bold text-white mb-4">
+						Akses Administrator
+					</h1>
+					<p className="text-gray-400 mb-6">
+						Sebagai administrator, Anda tidak memiliki hak suara dalam pemilihan ini untuk menjaga netralitas.
+						Namun, Anda dapat memantau jalannya pemilihan.
+					</p>
+					<div className="flex flex-col sm:flex-row gap-3 justify-center">
+						<Link href="/admin" className="btn btn-primary">
+							⚙️ Dashboard Admin
+						</Link>
+						<Link href="/results" className="btn btn-secondary">
+							📊 Pantau Hasil
+						</Link>
+					</div>
+				</div>
+			</main>
+		);
+	}
+
 	return (
 		<main className="min-h-screen py-24 px-6">
 			<div className="max-w-6xl mx-auto">
@@ -178,11 +206,10 @@ export default function VotePage() {
 						<div
 							key={candidate.id}
 							onClick={() => setSelectedCandidate(candidate.id)}
-							className={`glass candidate-card p-6 cursor-pointer animate-fadeIn ${
-								selectedCandidate === candidate.id
+							className={`glass candidate-card p-6 cursor-pointer animate-fadeIn ${selectedCandidate === candidate.id
 									? "selected"
 									: ""
-							}`}
+								}`}
 							style={{ animationDelay: `${index * 0.1}s` }}
 						>
 							{/* Candidate Image Placeholder */}
@@ -216,11 +243,10 @@ export default function VotePage() {
 					<button
 						onClick={handleSubmitVote}
 						disabled={!selectedCandidate || isSubmitting}
-						className={`btn btn-primary text-lg px-10 py-4 ${
-							!selectedCandidate
+						className={`btn btn-primary text-lg px-10 py-4 ${!selectedCandidate
 								? "opacity-50 cursor-not-allowed"
 								: ""
-						}`}
+							}`}
 					>
 						{isSubmitting ? (
 							<>

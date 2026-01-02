@@ -90,4 +90,9 @@ export class SQLiteDatabase {
         }
         return null;
     }
+
+    getAllUsers(): Omit<User, "password">[] {
+        const stmt = db.prepare("SELECT nim, name, email, faculty, major, campus, entry_year, status, role FROM users ORDER BY name ASC");
+        return stmt.all() as Omit<User, "password">[];
+    }
 }

@@ -14,6 +14,11 @@ voteRoutes.post("/submit", authMiddleware, async (c) => {
 		const body = await c.req.json();
 		const { candidateId } = body;
 
+		// Admins cannot vote
+		if (user.role && user.role.includes("admin")) {
+			return c.json({ error: "Administrators are not allowed to vote" }, 403);
+		}
+
 		if (!candidateId) {
 			return c.json({ error: "Candidate ID is required" }, 400);
 		}

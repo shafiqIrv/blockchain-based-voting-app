@@ -61,7 +61,24 @@ electionRoutes.get("/:id/candidates", async (c) => {
 electionRoutes.get("/:id/results", async (c) => {
 	try {
 		const electionId = c.req.param("id");
-		const results = await fabricService.getResults(electionId);
+
+		// Check for Admin Role manual authentication (optional)
+		let bypassTimeCheck = false;
+		const authHeader = c.req.header("Authorization");
+		if (authHeader && authHeader.startsWith("Bearer ")) {
+			const token = authHeader.substring(7);
+			try {
+				const jwt = await import("jsonwebtoken");
+				const decoded = jwt.default.verify(token, process.env.JWT_SECRET || "default-secret") as any;
+				if (decoded.role === "admin") {
+					bypassTimeCheck = true;
+				}
+			} catch (e) {
+				// Ignore invalid token, just treat as public
+			}
+		}
+
+		const results = await fabricService.getResults(electionId, bypassTimeCheck);
 
 		return c.json(results);
 	} catch (error: any) {
@@ -118,6 +135,73 @@ electionRoutes.post("/:id/dates", async (c) => {
 			{ error: error.message || "Failed to update election dates" },
 			500
 		);
+	}
+});
+
+/**
+ * GET /api/election/:id/voters
+ * Get list of voters and their status (Admin only)
+ */
+electionRoutes.get("/:id/voters", async (c) => {
+	try {
+		const electionId = c.req.param("id");
+
+		// Manual Auth Check (Admin Only)
+		const authHeader = c.req.header("Authorization");
+		if (!authHeader || !authHeader.startsWith("Bearer ")) {
+			return c.json({ error: "Unauthorized" }, 401);
+		}
+
+		const token = authHeader.substring(7);
+		const jwt = await import("jsonwebtoken");
+		let userRole = "voter";
+		try {
+			const decoded = jwt.default.verify(token, process.env.JWT_SECRET || "default-secret") as any;
+			userRole = decoded.role;
+		} catch (e) {
+			return c.json({ error: "Invalid token" }, 401);
+		}
+
+		if (userRole !== "admin") {
+			return c.json({ error: "Forbidden: Admin access required" }, 403);
+		}
+
+		// 1. Fetch Users from Oracle
+		const oracleUrl = process.env.ORACLE_URL || "http://localhost:3002";
+		const response = await fetch(`${oracleUrl}/internal/users`, {
+			headers: { "x-internal-secret": process.env.INTERNAL_SECRET || "internal-secret" }
+		});
+
+		if (!response.ok) {
+			throw new Error("Failed to fetch users from Oracle");
+		}
+
+		const users: any[] = await response.json();
+
+		// 2. Check Voting Status for each user
+		const votersStatus = await Promise.all(users.map(async (u) => {
+			// Reconstruct Deterministic Token
+			const { createHmac } = await import("node:crypto");
+			const tokenIdentifier = createHmac("sha256", process.env.JWT_SECRET || "default-secret")
+				.update(`${u.nim}:${electionId}`)
+				.digest("hex");
+
+			const hasVoted = await fabricService.hasVoted(electionId, tokenIdentifier);
+
+			return {
+				nim: u.nim,
+				name: u.name,
+				faculty: u.faculty,
+				role: u.role,
+				hasVoted
+			};
+		}));
+
+		return c.json(votersStatus);
+
+	} catch (error: any) {
+		console.error("Get voters error:", error);
+		return c.json({ error: error.message || "Failed to get voters" }, 500);
 	}
 });
 

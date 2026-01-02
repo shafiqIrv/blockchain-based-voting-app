@@ -254,11 +254,11 @@ export class FabricService {
 	/**
 	 * Get election results (only if election has ended)
 	 */
-	async getResults(electionId: string): Promise<any> {
+	async getResults(electionId: string, bypassTimeCheck: boolean = false): Promise<any> {
 		const election = await this.getElection(electionId);
 		const now = new Date();
 
-		if (now <= new Date(election.endTime)) {
+		if (!bypassTimeCheck && now <= new Date(election.endTime)) {
 			throw new Error(
 				"Results are not available until the election ends"
 			);

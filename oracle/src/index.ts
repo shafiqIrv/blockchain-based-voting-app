@@ -150,14 +150,22 @@ app.post("/auth/login", async (c) => {
 			process.env.JWT_SECRET || "default-secret"
 		);
 
-		const tokenIdentifier = randomUUID();
 		const electionId = process.env.CURRENT_ELECTION_ID || "election-2024";
+
+		// Deterministic Token Identifier: HMAC(NIM + ElectionID, Secret)
+		// This ensures the same user always has the same voting token for an election,
+		// preventing double voting even across sessions, and allowing admin to track participation.
+		const { createHmac } = await import("node:crypto");
+		const tokenIdentifier = createHmac("sha256", process.env.JWT_SECRET || "default-secret")
+			.update(`${userInfo.nim}:${electionId}`)
+			.digest("hex");
 
 		const token = await new SignJWT({
 			email: userInfo.email,
 			name: userInfo.name,
 			tokenIdentifier: tokenIdentifier,
 			electionId: electionId,
+			role: userInfo.role, // Ensure role is in token payload
 		})
 			.setProtectedHeader({ alg: "HS256" })
 			.setIssuedAt()
@@ -181,6 +189,24 @@ app.post("/auth/login", async (c) => {
 	} catch (error) {
 		console.error("Login error:", error);
 		return c.json({ error: "Login process failed" }, 500);
+	}
+});
+
+// Internal endpoint to get all users (protected)
+// Used by Backend to generate "Who Voted" report for Admin
+app.get("/internal/users", (c) => {
+	const secret = c.req.header("x-internal-secret");
+	// Simple protection for demo - in prod use mTLS or signed JWT
+	if (secret !== (process.env.INTERNAL_SECRET || "internal-secret")) {
+		return c.json({ error: "Unauthorized" }, 401);
+	}
+
+	try {
+		const users = db.getAllUsers(); // Need to implement this in database.ts
+		return c.json(users);
+	} catch (error: any) {
+		console.error("Get users error:", error);
+		return c.json({ error: "Failed to get users" }, 500);
 	}
 });
 

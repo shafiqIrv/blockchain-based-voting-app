@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, Candidate, ElectionStatus } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 
 interface ElectionResults {
 	electionId: string;
@@ -13,6 +14,7 @@ interface ElectionResults {
 }
 
 export default function ResultsPage() {
+	const { user } = useAuth();
 	const [results, setResults] = useState<ElectionResults | null>(null);
 	const [electionStatus, setElectionStatus] = useState<ElectionStatus | null>(
 		null
@@ -37,11 +39,24 @@ export default function ResultsPage() {
 				const resultsData = await api.getResults("election-2024");
 				setResults(resultsData);
 			} catch (e: any) {
-				if (status.status !== "ENDED") {
-					// Expected - election not ended
+				// Allow admin to bypass UI check, but if API fails, still show partial or handle it.
+				// However, the API logic for admin now returns results even if not ended.
+				// So if I am admin, getResults should SUCCEED.
+				// If I am NOT admin, it throws "not ended".
+
+				if (status.status !== "ENDED" && user?.role !== 'admin') {
+					// Expected - election not ended and not admin
 					setError(null);
 				} else {
-					throw e;
+					// Actual error or Admin failed to fetch
+					if (e.message && e.message.includes("not available") && user?.role === 'admin') {
+						// Should not happen if API is updated
+						setError(e.message);
+					} else if (e.message && e.message.includes("not available")) {
+						setError(null);
+					} else {
+						throw e;
+					}
 				}
 			}
 		} catch (err: any) {
@@ -62,8 +77,9 @@ export default function ResultsPage() {
 		);
 	}
 
-	// Election not ended
-	if (electionStatus && electionStatus.status !== "ENDED" && !results) {
+	// Election not ended and NOT admin
+	// Display waiting screen only if: Not Ended AND No Results AND (User is NOT Admin OR Admin failed to get results)
+	if (electionStatus && electionStatus.status !== "ENDED" && !results && user?.role !== "admin") {
 		return (
 			<main className="min-h-screen py-24 px-6">
 				<div className="max-w-2xl mx-auto text-center">
@@ -146,19 +162,31 @@ export default function ResultsPage() {
 		<main className="min-h-screen py-24 px-6">
 			<div className="max-w-4xl mx-auto">
 				{/* Header */}
-				<div className="text-center mb-12 animate-fadeIn">
-					<Link href="/" className="inline-block mb-6">
-						<span className="text-gray-400 hover:text-white transition">
-							← Kembali
-						</span>
-					</Link>
-					<div className="badge badge-success mb-4">
-						✓ Pemilihan Selesai
+				{/* Header */}
+				<div className="mb-12 animate-fadeIn">
+					<div className="flex justify-between items-start mb-6">
+						<Link href="/">
+							<span className="text-gray-400 hover:text-white transition flex items-center gap-2">
+								← Kembali
+							</span>
+						</Link>
 					</div>
-					<h1 className="text-4xl font-bold text-white mb-4">
-						📊 Hasil Pemilihan
-					</h1>
-					<p className="text-gray-400">{results?.name}</p>
+
+					<div className="text-center">
+						{electionStatus?.status === "ENDED" ? (
+							<div className="badge badge-success mb-4">
+								✓ Pemilihan Selesai
+							</div>
+						) : (
+							<div className="badge badge-warning mb-4">
+								⏳ Sedang Berjalan
+							</div>
+						)}
+						<h1 className="text-4xl font-bold text-white mb-4">
+							📊 Hasil Pemilihan
+						</h1>
+						<p className="text-gray-400">{results?.name}</p>
+					</div>
 				</div>
 
 				{/* Winner Card */}
@@ -177,9 +205,9 @@ export default function ResultsPage() {
 								{winner.voteCount} suara (
 								{totalVotes > 0
 									? (
-											(winner.voteCount! / totalVotes) *
-											100
-									  ).toFixed(1)
+										(winner.voteCount! / totalVotes) *
+										100
+									).toFixed(1)
 									: 0}
 								%)
 							</p>
@@ -205,15 +233,14 @@ export default function ResultsPage() {
 							>
 								<div className="flex items-center gap-4 mb-4">
 									<div
-										className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
-											index === 0
-												? "bg-gradient-to-br from-yellow-400 to-orange-500"
-												: index === 1
+										className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${index === 0
+											? "bg-gradient-to-br from-yellow-400 to-orange-500"
+											: index === 1
 												? "bg-gradient-to-br from-gray-300 to-gray-400"
 												: index === 2
-												? "bg-gradient-to-br from-amber-600 to-amber-700"
-												: "bg-gray-600"
-										}`}
+													? "bg-gradient-to-br from-amber-600 to-amber-700"
+													: "bg-gray-600"
+											}`}
 									>
 										{index + 1}
 									</div>
@@ -262,24 +289,26 @@ export default function ResultsPage() {
 						<p className="text-lg font-bold text-white mb-1">
 							{results?.endedAt
 								? new Date(results.endedAt).toLocaleDateString(
-										"id-ID"
-								  )
+									"id-ID"
+								)
 								: "-"}
 						</p>
 						<p className="text-sm text-gray-400">Tanggal Selesai</p>
 					</div>
 				</div>
 
-				{/* Verify CTA */}
-				<div className="glass-sm p-6 text-center animate-fadeIn stagger-4">
-					<p className="text-gray-400 mb-4">
-						Ingin memverifikasi bahwa suara Anda tercatat dengan
-						benar?
-					</p>
-					<Link href="/verify" className="btn btn-secondary">
-						🔍 Verifikasi Suara Saya
-					</Link>
-				</div>
+				{/* Verify CTA - Only for non-admin */}
+				{user?.role !== "admin" && (
+					<div className="glass-sm p-6 text-center animate-fadeIn stagger-4">
+						<p className="text-gray-400 mb-4">
+							Ingin memverifikasi bahwa suara Anda tercatat dengan
+							benar?
+						</p>
+						<Link href="/verify" className="btn btn-secondary">
+							🔍 Verifikasi Suara Saya
+						</Link>
+					</div>
+				)}
 			</div>
 		</main>
 	);
