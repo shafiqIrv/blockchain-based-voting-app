@@ -84,8 +84,8 @@ export default function LoginPage() {
 				<div className="w-24 h-24 rounded-2xl bg-white/10 flex items-center justify-center mx-auto mb-6 p-4">
 					<div className="relative w-full h-full">
 						<Image
-							src="/public/logo.png"
-							alt="ITB Logo"
+							src="/favicon.png"
+							alt="Logo Pemira"
 							fill
 							className="object-contain"
 							priority

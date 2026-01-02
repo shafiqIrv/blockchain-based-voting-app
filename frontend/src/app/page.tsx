@@ -15,8 +15,8 @@ export default function Home() {
 					<div className="flex items-center gap-3">
 						<div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center p-2 relative overflow-hidden">
 							<Image
-								src="/public/logo.png"
-								alt="ITB Logo"
+								src="/favicon.png"
+								alt="Logo Pemira"
 								fill
 								className="object-contain"
 								priority
