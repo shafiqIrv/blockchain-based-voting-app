@@ -1,46 +1,54 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { logger } from "hono/logger";
-import { SSOClient } from "./sso";
+import { cors } from "hono/cors";
+import { SignJWT } from "jose";
+import { randomUUID } from "node:crypto";
+import { Database } from "./db";
 import { StudentValidator } from "./validator";
 
 const app = new Hono();
 
 // Middleware
 app.use("*", logger());
+app.use(
+	"*",
+	cors({
+		origin: ["http://localhost:3000"],
+		allowHeaders: ["Content-Type", "Authorization"],
+		allowMethods: ["POST", "GET", "OPTIONS"],
+		exposeHeaders: ["Content-Length"],
+		maxAge: 600,
+		credentials: true,
+	})
+);
 
-// SSO ITB Client instance
-const ssoClient = new SSOClient({
-	baseUrl: process.env.SSO_ITB_URL || "https://login.itb.ac.id",
-	clientId: process.env.SSO_CLIENT_ID || "",
-	clientSecret: process.env.SSO_CLIENT_SECRET || "",
-	callbackUrl: process.env.SSO_CALLBACK_URL || "",
-});
+// Local Database instance
+const db = new Database();
 
 // Student validator
 const validator = new StudentValidator();
 
 // Health check
 app.get("/health", (c) => {
-	return c.json({ status: "ok", service: "oracle" });
+	return c.json({ status: "ok", service: "oracle", auth: "local-jwt" });
 });
 
-// Get SSO login URL
-app.get("/auth/login-url", (c) => {
-	const loginUrl = ssoClient.getLoginUrl();
-	return c.json({ loginUrl });
-});
-
-// Handle SSO callback and validate student
-app.post("/auth/validate", async (c) => {
+// Authentication endpoint (Replaces SSO)
+app.post("/auth/login", async (c) => {
 	try {
-		const { code } = await c.req.json();
+		const { nim, password } = await c.req.json();
 
-		// Exchange code for tokens
-		const tokens = await ssoClient.exchangeCode(code);
+		if (!nim || !password) {
+			return c.json({ error: "NIM and password are required" }, 400);
+		}
 
-		// Get user info from SSO
-		const userInfo = await ssoClient.getUserInfo(tokens.accessToken);
+		// Authenticate against local DB
+		const userInfo = await db.authenticate(nim, password);
+
+		if (!userInfo) {
+			return c.json({ error: "Invalid NIM or password" }, 401);
+		}
 
 		// Validate student eligibility
 		const validation = await validator.validateStudent(userInfo);
@@ -49,21 +57,47 @@ app.post("/auth/validate", async (c) => {
 			return c.json({ error: validation.reason }, 403);
 		}
 
+		// GENERATE JWT Compatible with Backend
+		const secret = new TextEncoder().encode(
+			process.env.JWT_SECRET || "default-secret"
+		);
+
+		const tokenIdentifier = randomUUID();
+		const electionId = process.env.CURRENT_ELECTION_ID || "election-2024";
+
+		const token = await new SignJWT({
+			email: userInfo.email,
+			name: userInfo.name,
+			tokenIdentifier: tokenIdentifier,
+			electionId: electionId,
+		})
+			.setProtectedHeader({ alg: "HS256" })
+			.setIssuedAt()
+			.setExpirationTime("24h")
+			.sign(secret);
+
 		return c.json({
 			valid: true,
-			studentId: userInfo.nim,
-			faculty: userInfo.faculty,
-			// Note: NIM should be hashed before being used as token identifier
+			token,
+			tokenId: tokenIdentifier,
+			user: {
+				name: userInfo.name,
+				email: userInfo.email,
+				tokenIdentifier: tokenIdentifier,
+				electionId: electionId,
+				nim: userInfo.nim,
+				faculty: userInfo.faculty
+			}
 		});
 	} catch (error) {
-		console.error("Validation error:", error);
-		return c.json({ error: "Validation failed" }, 500);
+		console.error("Login error:", error);
+		return c.json({ error: "Login process failed" }, 500);
 	}
 });
 
 const port = process.env.ORACLE_PORT ? parseInt(process.env.ORACLE_PORT) : 3002;
 
-console.log(`🔮 Oracle service running on http://localhost:${port}`);
+console.log(`🔮 Oracle service running on http://localhost:${port} (Local Auth + JWT Mode)`);
 
 serve({
 	fetch: app.fetch,

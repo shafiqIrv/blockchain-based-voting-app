@@ -5,10 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 
 export default function LoginPage() {
-	const { login, isAuthenticated, isLoading } = useAuth();
+	const { setAuthData, isAuthenticated, isLoading } = useAuth();
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const [error, setError] = useState<string | null>(null);
+	const [nim, setNim] = useState("");
+	const [password, setPassword] = useState("");
+	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	useEffect(() => {
 		// Check for error in URL params
@@ -16,24 +19,49 @@ export default function LoginPage() {
 		const message = searchParams.get("message");
 
 		if (errorParam) {
-			if (errorParam === "invalid_domain") {
-				setError(
-					message ||
-						"Hanya mahasiswa ITB yang dapat mengakses sistem voting"
-				);
-			} else if (errorParam === "auth_failed") {
-				setError("Autentikasi gagal. Silakan coba lagi.");
-			} else {
-				setError("Terjadi kesalahan. Silakan coba lagi.");
-			}
+			setError(message || "Terjadi kesalahan. Silakan coba lagi.");
 		}
 	}, [searchParams]);
 
 	useEffect(() => {
+		// Redirect if already authenticated
 		if (!isLoading && isAuthenticated) {
-			router.push("/vote");
+			router.push("/");
 		}
 	}, [isAuthenticated, isLoading, router]);
+
+	const handleLogin = async (e: React.FormEvent) => {
+		e.preventDefault();
+		setIsSubmitting(true);
+		setError(null);
+
+		try {
+			const res = await fetch("http://localhost:3002/auth/login", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ nim, password }),
+			});
+
+			const data = await res.json();
+
+			if (!res.ok) {
+				throw new Error(data.error || "Login failed");
+			}
+
+			// Success: Set auth data (token and tokenId)
+			// This triggers the auth context to fetch user profile from backend
+			setAuthData(data.token, data.tokenId, data.user);
+
+			// Redirect happens automatically via useEffect above when isAuthenticated becomes true
+
+		} catch (err: any) {
+			setError(err.message || "Gagal masuk. Periksa NIM dan password Anda.");
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
 
 	if (isLoading) {
 		return (
@@ -44,8 +72,8 @@ export default function LoginPage() {
 	}
 
 	return (
-		<main className="min-h-screen flex items-center justify-center px-6">
-			<div className="glass p-10 max-w-md w-full text-center animate-fadeIn">
+		<main className="min-h-screen flex items-center justify-center px-6 bg-gray-900">
+			<div className="glass p-10 max-w-md w-full text-center animate-fadeIn border border-white/10 rounded-2xl bg-white/5 backdrop-blur-lg">
 				{/* Logo */}
 				<div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mx-auto mb-6">
 					<span className="text-4xl">🗳️</span>
@@ -55,7 +83,7 @@ export default function LoginPage() {
 					ITB Voting
 				</h1>
 				<p className="text-gray-400 mb-8">
-					Masuk dengan akun Microsoft ITB untuk melakukan voting
+					Masuk untuk melakukan voting (Local Mode)
 				</p>
 
 				{error && (
@@ -64,22 +92,46 @@ export default function LoginPage() {
 					</div>
 				)}
 
-				<button
-					onClick={login}
-					className="btn btn-primary w-full text-lg py-4"
-				>
-					<svg
-						className="w-6 h-6"
-						viewBox="0 0 24 24"
-						fill="currentColor"
+				<form onSubmit={handleLogin} className="space-y-4 text-left">
+					<div>
+						<label className="block text-sm font-medium text-gray-300 mb-1">
+							NIM
+						</label>
+						<input
+							type="text"
+							required
+							className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+							placeholder="13521001"
+							value={nim}
+							onChange={(e) => setNim(e.target.value)}
+						/>
+					</div>
+
+					<div>
+						<label className="block text-sm font-medium text-gray-300 mb-1">
+							Password
+						</label>
+						<input
+							type="password"
+							required
+							className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+							placeholder="password123"
+							value={password}
+							onChange={(e) => setPassword(e.target.value)}
+						/>
+					</div>
+
+					<button
+						type="submit"
+						disabled={isSubmitting}
+						className="btn btn-primary w-full text-lg py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed mt-4"
 					>
-						<path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z" />
-					</svg>
-					Login dengan Microsoft
-				</button>
+						{isSubmitting ? "Memproses..." : "Masuk"}
+					</button>
+				</form>
 
 				<p className="text-sm text-gray-500 mt-6">
-					Hanya untuk mahasiswa ITB dengan email @mahasiswa.itb.ac.id
+					Gunakan akun mock: 13521001 / password123
 				</p>
 			</div>
 		</main>

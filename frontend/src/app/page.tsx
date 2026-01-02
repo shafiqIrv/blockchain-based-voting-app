@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 
 export default function Home() {
-	const { isAuthenticated, user, login, isLoading } = useAuth();
+	const { isAuthenticated, user, logout, isLoading } = useAuth();
 
 	return (
 		<main className="min-h-screen flex flex-col">
@@ -51,11 +51,17 @@ export default function Home() {
 										{user?.name?.charAt(0) || "U"}
 									</div>
 								</div>
+								<button
+									onClick={logout}
+									className="text-red-400 hover:text-red-300 transition text-sm font-medium"
+								>
+									Logout
+								</button>
 							</>
 						) : (
-							<button onClick={login} className="btn btn-primary">
-								Login with Microsoft
-							</button>
+							<Link href="/login" className="btn btn-primary">
+								Login to Vote
+							</Link>
 						)}
 					</nav>
 				</div>
@@ -108,19 +114,12 @@ export default function Home() {
 								</Link>
 							</>
 						) : (
-							<button
-								onClick={login}
+							<Link
+								href="/login"
 								className="btn btn-primary text-lg px-8 py-4"
 							>
-								<svg
-									className="w-6 h-6"
-									viewBox="0 0 24 24"
-									fill="currentColor"
-								>
-									<path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z" />
-								</svg>
-								Login dengan Microsoft
-							</button>
+								Login to Vote
+							</Link>
 						)}
 					</div>
 				</div>

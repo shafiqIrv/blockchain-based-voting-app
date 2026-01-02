@@ -16,7 +16,7 @@ interface AuthContextType {
 	isAuthenticated: boolean;
 	login: () => Promise<void>;
 	logout: () => void;
-	setAuthData: (token: string, tokenId: string) => void;
+	setAuthData: (token: string, tokenId: string, userData?: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -59,13 +59,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		setTokenId(null);
 	};
 
-	const setAuthData = (token: string, tid: string) => {
+	const setAuthData = (token: string, tid: string, userData?: User) => {
 		api.setToken(token);
 		localStorage.setItem("voting_tokenId", tid);
 		setTokenId(tid);
 
-		// Fetch user data
-		api.getMe().then(setUser).catch(console.error);
+		if (userData) {
+			setUser(userData);
+		} else {
+			// Fetch user data
+			api.getMe().then(setUser).catch(console.error);
+		}
 	};
 
 	return (
