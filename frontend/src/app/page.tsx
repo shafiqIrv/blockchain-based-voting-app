@@ -10,8 +10,8 @@ export default function Home() {
 	return (
 		<main className="min-h-screen flex flex-col">
 			{/* Header */}
-			<header className="fixed top-0 left-0 right-0 z-50 glass-sm">
-				<div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+			<header className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0f] border-b border-white/10">
+				<div className="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
 					<div className="flex items-center gap-3">
 						<div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center p-2 relative overflow-hidden">
 							<Image
@@ -29,48 +29,86 @@ export default function Home() {
 
 					<nav className="flex items-center gap-6">
 						{isAuthenticated ? (
-							<>
-								<Link
-									href="/vote"
-									className="text-gray-300 hover:text-white transition"
-								>
-									Vote
-								</Link>
-								<Link
-									href="/verify"
-									className="text-gray-300 hover:text-white transition"
-								>
-									Verify
-								</Link>
-								<Link
-									href="/results"
-									className="text-gray-300 hover:text-white transition"
-								>
-									Results
-								</Link>
-								<div className="flex items-center gap-3 pl-4 border-l border-gray-700">
-									<span className="text-sm text-gray-400">
-										{user?.name}
-									</span>
-									{user?.role === "admin" && (
+							<div className="flex items-center">
+								{/* Group 1: Standard Links */}
+								<div className="flex items-center gap-6">
+									<Link
+										href="/vote"
+										className="text-gray-300 hover:text-white transition"
+									>
+										Vote
+									</Link>
+									<Link
+										href="/verify"
+										className="text-gray-300 hover:text-white transition"
+									>
+										Verify
+									</Link>
+									<Link
+										href="/results"
+										className="text-gray-300 hover:text-white transition"
+									>
+										Results
+									</Link>
+								</div>
+
+								{/* Divider & Admin (If applicable) */}
+								{user?.role === "admin" && (
+									<>
+										<div className="h-6 w-px bg-white/20 mx-6"></div>
 										<Link
 											href="/admin"
-											className="px-3 py-1 rounded-lg bg-indigo-500/20 text-indigo-400 text-sm font-medium hover:bg-indigo-500/30 transition"
+											className="text-indigo-400 hover:text-indigo-300 font-medium transition"
 										>
 											Admin
 										</Link>
-									)}
-									<div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
-										{user?.name?.charAt(0) || "U"}
+									</>
+								)}
+
+								{/* Divider */}
+								<div className="h-6 w-px bg-white/20 mx-6"></div>
+
+								{/* Group 2: Profile & Logout */}
+								<div className="flex items-center gap-6">
+									<div className="flex items-center gap-3">
+										<div className="text-right hidden sm:block leading-tight">
+											<div className="text-sm font-medium text-white">
+												{user?.name}
+											</div>
+											<div className="text-xs text-gray-400">
+												{user?.role === "admin"
+													? "Administrator"
+													: "Voter"}
+											</div>
+										</div>
+										<div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium shadow-lg shadow-indigo-500/20">
+											{user?.name?.charAt(0) || "U"}
+										</div>
 									</div>
+
+									<button
+										onClick={logout}
+										className="text-gray-400 hover:text-white transition"
+										title="Logout"
+									>
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											width="20"
+											height="20"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth="2"
+											strokeLinecap="round"
+											strokeLinejoin="round"
+										>
+											<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+											<polyline points="16 17 21 12 16 7" />
+											<line x1="21" x2="9" y1="12" y2="12" />
+										</svg>
+									</button>
 								</div>
-								<button
-									onClick={logout}
-									className="text-red-400 hover:text-red-300 transition text-sm font-medium"
-								>
-									Logout
-								</button>
-							</>
+							</div>
 						) : (
 							<Link href="/login" className="btn btn-primary">
 								Login to Vote
@@ -81,7 +119,7 @@ export default function Home() {
 			</header>
 
 			{/* Hero Section */}
-			<section className="flex-1 flex items-center justify-center px-6 pt-24">
+			<section className="flex-1 flex items-center justify-center px-6 pt-32">
 				<div className="max-w-4xl mx-auto text-center">
 					<div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-sm mb-8 animate-fadeIn">
 						<span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
