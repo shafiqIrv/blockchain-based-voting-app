@@ -8,3 +8,8 @@ dist/
 .DS_Store
 coverage/
 .turbo/
+
+# Database
+*.sqlite
+*.sqlite3
+oracle/data/

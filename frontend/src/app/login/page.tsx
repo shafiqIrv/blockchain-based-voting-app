@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 
 export default function LoginPage() {
@@ -9,6 +10,7 @@ export default function LoginPage() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const [error, setError] = useState<string | null>(null);
+	const [success, setSuccess] = useState<string | null>(null);
 	const [nim, setNim] = useState("");
 	const [password, setPassword] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -20,6 +22,9 @@ export default function LoginPage() {
 
 		if (errorParam) {
 			setError(message || "Terjadi kesalahan. Silakan coba lagi.");
+		} else if (message) {
+			// Support showing success messages passed via URL
+			setSuccess(message);
 		}
 	}, [searchParams]);
 
@@ -92,6 +97,12 @@ export default function LoginPage() {
 					</div>
 				)}
 
+				{success && (
+					<div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 mb-6">
+						<p className="text-green-400 text-sm">{success}</p>
+					</div>
+				)}
+
 				<form onSubmit={handleLogin} className="space-y-4 text-left">
 					<div>
 						<label className="block text-sm font-medium text-gray-300 mb-1">
@@ -129,6 +140,16 @@ export default function LoginPage() {
 						{isSubmitting ? "Memproses..." : "Masuk"}
 					</button>
 				</form>
+
+				<div className="mt-8 text-sm text-gray-400">
+					Don't have an account?{" "}
+					<Link
+						href="/register"
+						className="text-indigo-400 hover:text-indigo-300 font-medium"
+					>
+						Register here
+					</Link>
+				</div>
 
 				<p className="text-sm text-gray-500 mt-6">
 					Gunakan akun mock: 13521001 / password123

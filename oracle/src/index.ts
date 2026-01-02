@@ -4,8 +4,9 @@ import { logger } from "hono/logger";
 import { cors } from "hono/cors";
 import { SignJWT } from "jose";
 import { randomUUID } from "node:crypto";
-import { Database } from "./db";
+import { SQLiteDatabase } from "./database";
 import { StudentValidator } from "./validator";
+import { FACULTIES } from "./data";
 
 const app = new Hono();
 
@@ -23,15 +24,102 @@ app.use(
 	})
 );
 
-// Local Database instance
-const db = new Database();
+// Local Persistent Database instance
+const db = new SQLiteDatabase();
 
 // Student validator
 const validator = new StudentValidator();
 
 // Health check
 app.get("/health", (c) => {
-	return c.json({ status: "ok", service: "oracle", auth: "local-jwt" });
+	return c.json({ status: "ok", service: "oracle", auth: "sqlite-jwt" });
+});
+
+// Get Faculties and Majors
+app.get("/auth/faculties", (c) => {
+	return c.json(FACULTIES);
+});
+
+// Registration Endpoint
+app.post("/auth/register", async (c) => {
+	try {
+		const body = await c.req.json();
+		const { name, nim, email, password, faculty, major, campus, entry_year } = body;
+
+		// 1. Basic Validation
+		if (!name || !nim || !email || !password || !faculty || !major || !campus || !entry_year) {
+			return c.json({ error: "All fields are required" }, 400);
+		}
+
+		// 2. Email Validation
+		if (!email.endsWith("@mahasiswa.itb.ac.id")) {
+			return c.json({ error: "Email must be @mahasiswa.itb.ac.id" }, 400);
+		}
+
+		// 3. Campus Validation
+		const validCampuses = ["Ganesha", "Jatinangor", "Cirebon"];
+		if (!validCampuses.includes(campus)) {
+			return c.json({ error: "Invalid campus selection" }, 400);
+		}
+
+		// 4. NIM Structure Validation
+		if (nim.length !== 8) {
+			return c.json({ error: "NIM must be exactly 8 digits" }, 400);
+		}
+
+		// 5. NIM Header Validation (Faculty/Major Check)
+		const selectedFaculty = FACULTIES.find(f => f.name === faculty);
+		if (!selectedFaculty) {
+			return c.json({ error: "Invalid faculty" }, 400);
+		}
+
+		const selectedMajor = selectedFaculty.majors.find(m => m.name === major);
+		if (!selectedMajor) {
+			return c.json({ error: `Invalid major for faculty ${faculty}` }, 400);
+		}
+
+		const expectedPrefix = selectedMajor.nimPrefix;
+		if (!nim.startsWith(expectedPrefix)) {
+			return c.json({
+				error: `Invalid NIM for ${major}. Must start with ${expectedPrefix}`
+			}, 400);
+		}
+
+		// 6. NIM Year Validation
+		const entryYearStr = entry_year.toString();
+		const expectedYearCode = entryYearStr.substring(entryYearStr.length - 2); // Last 2 digits
+		const nimYearCode = nim.substring(3, 5); // 4th and 5th digits
+
+		if (expectedYearCode !== nimYearCode) {
+			return c.json({
+				error: `NIM year code (${nimYearCode}) does not match entry year (${entry_year})`
+			}, 400);
+		}
+
+		// 7. Create User
+		const encryptPassword = (pass: string) => pass; // TODO: Hash password in production
+
+		const result = db.createUser({
+			name,
+			nim,
+			email,
+			password: encryptPassword(password),
+			faculty,
+			major,
+			campus,
+			entry_year: parseInt(entry_year)
+		});
+
+		if (!result.success) {
+			return c.json({ error: result.error }, 409); // Conflict
+		}
+
+		return c.json({ success: true, message: "Registration successful" });
+
+	} catch (error) {
+		console.error("Registration error:", error);
+		return c.json({ error: "Registration failed" }, 500);
+	}
 });
 
 // Authentication endpoint (Replaces SSO)

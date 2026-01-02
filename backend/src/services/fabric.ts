@@ -31,7 +31,7 @@ function initializeSeedData() {
 			id: electionId,
 			name: "Pemilihan Ketua Himpunan Mahasiswa ITB 2024",
 			startTime: new Date("2024-12-01T00:00:00Z"),
-			endTime: new Date("2025-12-31T23:59:59Z"),
+			endTime: new Date("2026-01-31T23:59:59Z"),
 			candidates: [
 				{
 					id: "candidate-1",
