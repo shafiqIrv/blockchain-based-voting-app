@@ -148,6 +148,35 @@ export class FabricService {
 	}
 
 	/**
+	 * Update election start and end dates
+	 */
+	async updateElectionDates(
+		electionId: string,
+		startTime: Date,
+		endTime: Date
+	): Promise<any> {
+		const election = mockState.elections.get(electionId);
+		if (!election) {
+			throw new Error(`Election ${electionId} not found`);
+		}
+
+		election.startTime = startTime;
+		election.endTime = endTime;
+
+		// Re-evaluate status
+		const now = new Date();
+		if (now < startTime) {
+			election.status = "PENDING";
+		} else if (now > endTime) {
+			election.status = "ENDED";
+		} else {
+			election.status = "ACTIVE";
+		}
+
+		return election;
+	}
+
+	/**
 	 * Check if a token has already voted
 	 */
 	async hasVoted(

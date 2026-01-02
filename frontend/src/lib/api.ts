@@ -5,6 +5,7 @@ export interface User {
 	name: string;
 	tokenIdentifier: string;
 	electionId: string;
+	role?: "admin" | "voter";
 }
 
 export interface Candidate {
@@ -157,6 +158,17 @@ class ApiClient {
 	): Promise<VoteVerification> {
 		const params = electionId ? `?electionId=${electionId}` : "";
 		return this.fetch(`/api/vote/verify/${tokenId}${params}`);
+	}
+
+	updateElectionDates(
+		electionId: string,
+		startDate: string,
+		endDate: string
+	): Promise<Election> {
+		return this.fetch(`/api/election/${electionId}/dates`, {
+			method: "POST",
+			body: JSON.stringify({ startDate, endDate }),
+		});
 	}
 }
 

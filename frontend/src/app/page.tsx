@@ -52,6 +52,14 @@ export default function Home() {
 									<span className="text-sm text-gray-400">
 										{user?.name}
 									</span>
+									{user?.role === "admin" && (
+										<Link
+											href="/admin"
+											className="px-3 py-1 rounded-lg bg-indigo-500/20 text-indigo-400 text-sm font-medium hover:bg-indigo-500/30 transition"
+										>
+											Admin
+										</Link>
+									)}
 									<div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
 										{user?.name?.charAt(0) || "U"}
 									</div>

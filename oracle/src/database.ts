@@ -20,6 +20,7 @@ export interface User {
     campus: "Ganesha" | "Jatinangor" | "Cirebon";
     entry_year: number;
     status: "active" | "inactive" | "graduated";
+    role: "admin" | "voter";
 }
 
 export class SQLiteDatabase {
@@ -38,23 +39,31 @@ export class SQLiteDatabase {
                 major TEXT NOT NULL,
                 campus TEXT NOT NULL,
                 entry_year INTEGER NOT NULL,
-                status TEXT NOT NULL DEFAULT 'active'
+                status TEXT NOT NULL DEFAULT 'active',
+                role TEXT NOT NULL DEFAULT 'voter'
             )
         `);
 
-        // Migration: Ensure status column exists (for existing DBs)
+        // Migration: Ensure status column exists
         try {
             db.exec("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'");
         } catch (error) {
             // Ignore error if column already exists
         }
+
+        // Migration: Ensure role column exists
+        try {
+            db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'voter'");
+        } catch (error) {
+            // Ignore error if column already exists
+        }
     }
 
-    createUser(user: Omit<User, "status">): { success: boolean; error?: string } {
+    createUser(user: Omit<User, "status" | "role">): { success: boolean; error?: string } {
         try {
             const stmt = db.prepare(`
-                INSERT INTO users (nim, name, email, password, faculty, major, campus, entry_year, status)
-                VALUES (@nim, @name, @email, @password, @faculty, @major, @campus, @entry_year, 'active')
+                INSERT INTO users (nim, name, email, password, faculty, major, campus, entry_year, status, role)
+                VALUES (@nim, @name, @email, @password, @faculty, @major, @campus, @entry_year, 'active', 'voter')
             `);
             stmt.run(user);
             return { success: true };

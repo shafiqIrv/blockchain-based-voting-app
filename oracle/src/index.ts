@@ -174,7 +174,8 @@ app.post("/auth/login", async (c) => {
 				tokenIdentifier: tokenIdentifier,
 				electionId: electionId,
 				nim: userInfo.nim,
-				faculty: userInfo.faculty
+				faculty: userInfo.faculty,
+				role: userInfo.role
 			}
 		});
 	} catch (error) {

@@ -91,4 +91,34 @@ electionRoutes.get("/", async (c) => {
 	}
 });
 
+/**
+ * POST /api/election/:id/dates
+ * Update election dates (Admin only)
+ */
+electionRoutes.post("/:id/dates", async (c) => {
+	try {
+		const electionId = c.req.param("id");
+		const body = await c.req.json();
+		const { startDate, endDate } = body;
+
+		if (!startDate || !endDate) {
+			return c.json({ error: "Start date and end date are required" }, 400);
+		}
+
+		const updatedElection = await fabricService.updateElectionDates(
+			electionId,
+			new Date(startDate),
+			new Date(endDate)
+		);
+
+		return c.json(updatedElection);
+	} catch (error: any) {
+		console.error("Update election dates error:", error);
+		return c.json(
+			{ error: error.message || "Failed to update election dates" },
+			500
+		);
+	}
+});
+
 export { electionRoutes };
