@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { api, VoteVerification } from "@/lib/api";
@@ -15,9 +15,16 @@ export default function VerifyPage() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
+	useEffect(() => {
+		if (isAuthenticated && tokenId) {
+			setInputTokenId(tokenId);
+			handleVerify(tokenId);
+		}
+	}, [isAuthenticated, tokenId]);
+
 	async function handleVerify(tokenToVerify?: string) {
 		const token = tokenToVerify || inputTokenId;
-		if (!token.trim()) return;
+		if (!token || !token.trim()) return;
 
 		setIsLoading(true);
 		setError(null);
@@ -54,41 +61,52 @@ export default function VerifyPage() {
 
 				{/* Verification Form */}
 				<div className="glass p-8 mb-8 animate-fadeIn stagger-1">
-					<label className="block text-sm text-gray-400 mb-2">
-						Token Verifikasi
-					</label>
-					<div className="flex gap-3">
-						<input
-							type="text"
-							value={inputTokenId}
-							onChange={(e) => setInputTokenId(e.target.value)}
-							placeholder="Masukkan token verifikasi..."
-							className="input-glass flex-1 font-mono"
-						/>
-						<button
-							onClick={() => handleVerify()}
-							disabled={isLoading || !inputTokenId.trim()}
-							className="btn btn-primary"
-						>
-							{isLoading ? (
-								<div className="spinner w-5 h-5 border-2"></div>
-							) : (
-								"Verifikasi"
+					{isAuthenticated && tokenId ? (
+						<div className="text-center">
+							<p className="text-sm text-gray-400 mb-2">Token Verifikasi Anda</p>
+							<div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-4 font-mono text-indigo-300 break-all select-all">
+								{tokenId}
+							</div>
+							{!verification && (
+								<button
+									onClick={() => handleVerify(tokenId)}
+									disabled={isLoading}
+									className="btn btn-primary w-full"
+								>
+									{isLoading ? (
+										<div className="spinner w-5 h-5 border-2"></div>
+									) : (
+										"Verifikasi Sekarang"
+									)}
+								</button>
 							)}
-						</button>
-					</div>
-
-					{/* Use my token button */}
-					{isAuthenticated && tokenId && (
-						<button
-							onClick={() => {
-								setInputTokenId(tokenId);
-								handleVerify(tokenId);
-							}}
-							className="mt-4 text-sm text-indigo-400 hover:text-indigo-300 transition"
-						>
-							Gunakan token saya: {tokenId.substring(0, 20)}...
-						</button>
+						</div>
+					) : (
+						<>
+							<label className="block text-sm text-gray-400 mb-2">
+								Token Verifikasi
+							</label>
+							<div className="flex gap-3">
+								<input
+									type="text"
+									value={inputTokenId}
+									onChange={(e) => setInputTokenId(e.target.value)}
+									placeholder="Masukkan token verifikasi..."
+									className="input-glass flex-1 font-mono"
+								/>
+								<button
+									onClick={() => handleVerify()}
+									disabled={isLoading || !inputTokenId.trim()}
+									className="btn btn-primary"
+								>
+									{isLoading ? (
+										<div className="spinner w-5 h-5 border-2"></div>
+									) : (
+										"Verifikasi"
+									)}
+								</button>
+							</div>
+						</>
 					)}
 				</div>
 
@@ -144,8 +162,8 @@ export default function VerifyPage() {
 										<p className="text-sm text-white">
 											{verification.vote?.timestamp
 												? new Date(
-														verification.vote.timestamp
-												  ).toLocaleString("id-ID")
+													verification.vote.timestamp
+												).toLocaleString("id-ID")
 												: "-"}
 										</p>
 									</div>

@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { api, Candidate, ElectionStatus } from "@/lib/api";
 
 export default function VotePage() {
-	const { isAuthenticated, isLoading, user, tokenId } = useAuth();
+	const { isAuthenticated, isLoading, user, tokenId, setAuthData } = useAuth();
 	const router = useRouter();
 
 	const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -63,9 +63,15 @@ export default function VotePage() {
 		setError(null);
 
 		try {
-			await api.submitVote(selectedCandidate);
+			const result = await api.submitVote(selectedCandidate);
 			setSuccess(true);
 			setHasVoted(true);
+
+			// Update auth context with new token
+			const token = api.getToken();
+			if (token && result.tokenIdentifier) {
+				setAuthData(token, result.tokenIdentifier, user || undefined);
+			}
 		} catch (err: any) {
 			setError(err.message || "Gagal mengirim suara");
 		} finally {
@@ -207,8 +213,8 @@ export default function VotePage() {
 							key={candidate.id}
 							onClick={() => setSelectedCandidate(candidate.id)}
 							className={`glass candidate-card p-6 cursor-pointer animate-fadeIn ${selectedCandidate === candidate.id
-									? "selected"
-									: ""
+								? "selected"
+								: ""
 								}`}
 							style={{ animationDelay: `${index * 0.1}s` }}
 						>
@@ -244,8 +250,8 @@ export default function VotePage() {
 						onClick={handleSubmitVote}
 						disabled={!selectedCandidate || isSubmitting}
 						className={`btn btn-primary text-lg px-10 py-4 ${!selectedCandidate
-								? "opacity-50 cursor-not-allowed"
-								: ""
+							? "opacity-50 cursor-not-allowed"
+							: ""
 							}`}
 					>
 						{isSubmitting ? (
