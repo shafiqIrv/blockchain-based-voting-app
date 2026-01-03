@@ -325,6 +325,25 @@ export default function ResultsPage() {
 	);
 }
 
+// Hardcoded map from Oracle data
+const MAJOR_TO_PREFIX: Record<string, string> = {
+	"Matematika": "101", "Fisika": "102", "Astronomi": "103", "Kimia": "105", "Aktuaria": "108", "TPB FMIPA": "160",
+	"Mikrobiologi": "104", "Biologi": "106", "TPB SITH-S": "161",
+	"Rekayasa Hayati": "112", "Rekayasa Pertanian": "114", "Rekayasa Kehutanan": "115", "Teknologi Pasca Panen": "119", "TPB SITH-R": "198",
+	"Sains dan Teknologi Farmasi": "107", "Farmasi Klinik dan Komunitas": "116", "TPB SF": "162",
+	"Teknik Pertambangan": "121", "Teknik Perminyakan": "122", "Teknik Geofisika": "123", "Teknik Metalurgi": "125", "TPB FTTM": "164",
+	"Teknik Geologi": "120", "Meteorologi": "128", "Oseanografi": "129", "Teknik Geodesi dan Geomatika": "151", "TPB FITB": "163",
+	"Teknik Kimia": "130", "Teknik Fisika": "133", "Teknik Industri": "134", "Teknik Pangan": "143", "Manajemen Rekayasa": "144", "Teknik Bioenergi dan Kemurgi": "145", "Teknik Industri Cirebon": "194", "TPB FTI": "167",
+	"Teknik Elektro": "132", "Teknik Tenaga Listrik": "180", "Teknik Telekomunikasi": "181", "Teknik Biomedis": "183", "TPB STEI-R": "165",
+	"Teknik Informatika": "135", "Sistem dan Teknologi Informasi": "182", "TPB STEI-K": "196",
+	"Teknik Mesin": "131", "Teknik Dirgantara": "136", "Teknik Material": "137", "TPB FTMD": "169",
+	"Teknik Sipil": "150", "Teknik Lingkungan": "153", "Teknik Kelautan": "155", "Rekayasa Infrastruktur Lingkungan": "157", "Teknik dan Pengelolaan Sumber Daya Air": "158", "TPB FTSL": "166",
+	"Arsitektur": "152", "Perencanaan Wilayah dan Kota": "154", "Perencanaan Wilayah dan Kota Cirebon": "156", "TPB SAPPK": "199",
+	"Seni Rupa": "170", "Kriya Cirebon": "171", "Kriya": "172", "Desain Interior": "173", "Desain Komunikasi Visual": "174", "Desain Produk": "175", "TPB FSRD": "168",
+	"Manajemen": "190", "Kewirausahaan": "192", "TPB SBM": "197"
+};
+
+
 function AnalyticsSection({ results }: { results: ElectionResults | null }) {
 	const [stats, setStats] = useState<Record<string, { total: number; voted: number }>>({});
 	const [selectedMajor, setSelectedMajor] = useState<string | null>(null);
@@ -336,6 +355,7 @@ function AnalyticsSection({ results }: { results: ElectionResults | null }) {
 	// Participation Leaderboard Logic
 	const participationData = Object.entries(stats).map(([major, data]) => ({
 		major,
+		prefix: MAJOR_TO_PREFIX[major] || "?",
 		...data,
 		percentage: data.total > 0 ? (data.voted / data.total) * 100 : 0
 	})).sort((a, b) => b.percentage - a.percentage);
@@ -382,7 +402,7 @@ function AnalyticsSection({ results }: { results: ElectionResults | null }) {
 								<div className="relative flex justify-between items-center z-10">
 									<div>
 										<p className="font-semibold text-white">
-											{index + 1}. {item.major}
+											{index + 1}. {item.major} ({item.prefix})
 										</p>
 										<p className="text-xs text-gray-400">
 											{item.voted} dari {item.total} pemilih
@@ -417,7 +437,7 @@ function AnalyticsSection({ results }: { results: ElectionResults | null }) {
 							className="w-full bg-[#1a1a20] border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
 						>
 							{majors.map(m => (
-								<option key={m} value={m}>{m}</option>
+								<option key={m} value={m}>{m} ({MAJOR_TO_PREFIX[m] || "?"})</option>
 							))}
 						</select>
 					</div>
