@@ -14,13 +14,10 @@ import { blindSignatureService } from "../services/blind-signature";
 voteRoutes.post("/submit", async (c) => {
 	try {
 		const body = await c.req.json();
-		const { candidateId, tokenIdentifier, signature } = body;
+		const { candidateIds, tokenIdentifier, signature } = body;
 
-		// Legacy Auth Check (for backward compatibility if needed, or remove)
-		// For blind signatures, we expect tokenIdentifier + signature and NO auth header dependence for identity
-
-		if (!candidateId) {
-			return c.json({ error: "Candidate ID is required" }, 400);
+		if (!candidateIds || !Array.isArray(candidateIds) || candidateIds.length === 0) {
+			return c.json({ error: "Candidate rankings are required" }, 400);
 		}
 
 		// New Anonymous Flow
@@ -45,7 +42,7 @@ voteRoutes.post("/submit", async (c) => {
 			// 3. Create encrypted vote
 			const encryptedVote = btoa(
 				JSON.stringify({
-					candidateId,
+					candidateIds,
 					timestamp: new Date().toISOString(),
 				})
 			);

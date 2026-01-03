@@ -10,13 +10,16 @@ export default function VotePage() {
 	const { isAuthenticated, isLoading, user, tokenId, signature, setAuthData } = useAuth();
 	const router = useRouter();
 
-	const [candidates, setCandidates] = useState<Candidate[]>([]);
+
 	const [electionStatus, setElectionStatus] = useState<ElectionStatus | null>(
 		null
 	);
-	const [selectedCandidate, setSelectedCandidate] = useState<string | null>(
-		null
-	);
+	const [candidates, setCandidates] = useState<Candidate[]>([]);
+	// Stores the ordered list of candidate IDs
+	const [rankedCandidateIds, setRankedCandidateIds] = useState<string[]>([]);
+
+	// Original candidates map for easy lookup
+	const [candidatesMap, setCandidatesMap] = useState<Record<string, Candidate>>({});
 	const [hasVoted, setHasVoted] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isLoadingData, setIsLoadingData] = useState(true);
@@ -47,7 +50,15 @@ export default function VotePage() {
 				]);
 
 			setElectionStatus(statusData);
+			setElectionStatus(statusData);
 			setCandidates(candidatesData.candidates);
+
+			// Initialize ranking with default order (or random/shuffled if preferred)
+			setRankedCandidateIds(candidatesData.candidates.map(c => c.id));
+
+			const map: Record<string, Candidate> = {};
+			candidatesData.candidates.forEach(c => { map[c.id] = c; });
+			setCandidatesMap(map);
 
 			// Check if user has voted (either via account or anonymous token)
 			let alreadyVoted = voteStatusData.hasVoted;
@@ -73,7 +84,7 @@ export default function VotePage() {
 	}
 
 	async function handleSubmitVote() {
-		if (!selectedCandidate) return;
+		if (rankedCandidateIds.length === 0) return;
 
 		setIsSubmitting(true);
 		setError(null);
@@ -84,7 +95,7 @@ export default function VotePage() {
 				throw new Error("Token pemilihan tidak ditemukan. Silakan login ulang.");
 			}
 
-			const result = await api.submitVote(selectedCandidate, tokenId, signature);
+			const result = await api.submitVote(rankedCandidateIds, tokenId, signature);
 			setSuccess(true);
 			setHasVoted(true);
 
@@ -216,7 +227,7 @@ export default function VotePage() {
 						{electionStatus?.name || "Pemilihan"}
 					</h1>
 					<p className="text-gray-400">
-						Pilih satu kandidat untuk menyalurkan suara Anda
+						Urutkan kandidat berdasarkan preferensi Anda (No. 1 adalah pilihan utama)
 					</p>
 				</div>
 
@@ -230,68 +241,107 @@ export default function VotePage() {
 				)}
 
 				{/* Candidate Grid */}
-				<div className="grid md:grid-cols-3 gap-6 mb-10">
-					{candidates.map((candidate, index) => (
-						<div
-							key={candidate.id}
-							onClick={() => setSelectedCandidate(candidate.id)}
-							className={`glass candidate-card p-6 cursor-pointer animate-fadeIn ${selectedCandidate === candidate.id
-								? "selected"
-								: ""
-								}`}
-							style={{ animationDelay: `${index * 0.1}s` }}
-						>
-							{/* Candidate Image Placeholder */}
-							<div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 mx-auto mb-4 flex items-center justify-center">
-								<span className="text-3xl text-white font-bold">
-									{candidate.name.charAt(0)}
-								</span>
-							</div>
+				{/* Ranking Grid */}
+				<div className="mb-10">
+					<div className="glass p-6 rounded-2xl border border-white/10 bg-white/5">
+						<h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+							🏆 Urutkan Pilihan Anda
+						</h3>
+						<p className="text-gray-400 mb-6 text-sm">
+							Gunakan tombol panah untuk mengurutkan kandidat dari yang paling Anda inginkan (atas) hingga yang paling kurang Anda inginkan (bawah).
+						</p>
 
-							<h3 className="text-xl font-semibold text-white text-center mb-3">
-								{candidate.name}
-							</h3>
+						<div className="space-y-4">
+							{rankedCandidateIds.map((candidateId, index) => {
+								const candidate = candidatesMap[candidateId];
+								if (!candidate) return null;
 
-							<p className="text-gray-400 text-sm text-center line-clamp-4">
-								{candidate.vision}
-							</p>
+								const isFirst = index === 0;
+								const isLast = index === rankedCandidateIds.length - 1;
 
-							{selectedCandidate === candidate.id && (
-								<div className="mt-4 text-center">
-									<span className="badge badge-success">
-										✓ Dipilih
-									</span>
-								</div>
-							)}
+								const moveUp = () => {
+									if (isFirst) return;
+									const newRank = [...rankedCandidateIds];
+									[newRank[index - 1], newRank[index]] = [newRank[index], newRank[index - 1]];
+									setRankedCandidateIds(newRank);
+								};
+
+								const moveDown = () => {
+									if (isLast) return;
+									const newRank = [...rankedCandidateIds];
+									[newRank[index + 1], newRank[index]] = [newRank[index], newRank[index + 1]];
+									setRankedCandidateIds(newRank);
+								};
+
+								return (
+									<div
+										key={candidate.id}
+										className={`relative flex items-center gap-4 p-4 rounded-xl transition-all border ${index === 0
+											? 'bg-indigo-500/10 border-indigo-500/50 shadow-lg shadow-indigo-500/20'
+											: 'bg-black/20 border-white/5 hover:border-white/10'
+											}`}
+									>
+										{/* Rank Number */}
+										<div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold shrink-0 ${index === 0 ? 'bg-indigo-500 text-white' : 'bg-white/10 text-gray-400'
+											}`}>
+											#{index + 1}
+										</div>
+
+										{/* Avatar */}
+										<div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shrink-0">
+											<span className="text-lg text-white font-bold">{candidate.name.charAt(0)}</span>
+										</div>
+
+										{/* Content */}
+										<div className="flex-1 min-w-0">
+											<h4 className="text-lg font-bold text-white truncate">{candidate.name}</h4>
+											<p className="text-gray-400 text-sm truncate">{candidate.vision}</p>
+										</div>
+
+										{/* Actions */}
+										<div className="flex flex-col gap-1">
+											<button
+												onClick={moveUp}
+												disabled={isFirst}
+												className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-white disabled:opacity-20 disabled:hover:bg-transparent transition"
+												title="Geser ke Atas"
+											>
+												▲
+											</button>
+											<button
+												onClick={moveDown}
+												disabled={isLast}
+												className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-white disabled:opacity-20 disabled:hover:bg-transparent transition"
+												title="Geser ke Bawah"
+											>
+												▼
+											</button>
+										</div>
+									</div>
+								);
+							})}
 						</div>
-					))}
+					</div>
 				</div>
 
 				{/* Submit Button */}
 				<div className="text-center animate-fadeIn stagger-4">
 					<button
 						onClick={handleSubmitVote}
-						disabled={!selectedCandidate || isSubmitting}
-						className={`btn btn-primary text-lg px-10 py-4 ${!selectedCandidate
-							? "opacity-50 cursor-not-allowed"
-							: ""
-							}`}
+						disabled={isSubmitting}
+						className="btn btn-primary text-lg px-10 py-4 w-full md:w-auto"
 					>
 						{isSubmitting ? (
 							<>
 								<div className="spinner w-5 h-5 border-2"></div>
-								Mengirim Suara...
+								Mengirim Pilihan...
 							</>
 						) : (
-							<>🗳️ Kirim Suara</>
+							<>🗳️ Kirim Pilihan Berurutan</>
 						)}
 					</button>
 
-					{!selectedCandidate && (
-						<p className="text-gray-500 text-sm mt-3">
-							Pilih kandidat terlebih dahulu
-						</p>
-					)}
+
 				</div>
 
 				{/* Info */}
@@ -301,7 +351,9 @@ export default function VotePage() {
 							ℹ️ Informasi Penting
 						</h4>
 						<ul className="text-gray-400 text-sm space-y-2">
-							<li>• Anda hanya dapat memilih satu kali</li>
+							<li>• Urutkan kandidat sesuai preferensi Anda.</li>
+							<li>• Kandidat di posisi #1 adalah pilihan utama Anda.</li>
+							<li>• Suara Anda menggunakan metode Ranked Choice Voting.</li>
 							<li>
 								• Suara Anda akan dienkripsi dan disimpan di
 								blockchain

@@ -294,73 +294,87 @@ export default function AdminPage() {
                 ) : activeTab === "candidates" ? (
                     /* Candidates Management */
                     <div className="animate-fadeIn space-y-8">
-                        {/* Add Candidate Form */}
-                        {!isAddingCandidate ? (
-                            <button
-                                onClick={() => setIsAddingCandidate(true)}
-                                className="w-full py-4 border-2 border-dashed border-white/20 rounded-2xl text-gray-400 hover:border-indigo-500 hover:text-indigo-400 transition flex items-center justify-center gap-2 group"
-                            >
-                                <span className="text-2xl group-hover:scale-110 transition">+</span>
-                                <span className="font-medium">Tambah Kandidat Baru</span>
-                            </button>
-                        ) : (
-                            <div className="glass p-8 rounded-2xl border border-white/10 bg-white/5">
-                                <h2 className="text-xl font-semibold text-white mb-6">Tambah Kandidat</h2>
-                                <form onSubmit={handleAddCandidate} className="space-y-6">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">Nama Kandidat</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
-                                            value={newCandidate.name}
-                                            onChange={(e) => setNewCandidate({ ...newCandidate, name: e.target.value })}
-                                            placeholder="Nama lengkap kandidat"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">Visi & Misi</label>
-                                        <textarea
-                                            required
-                                            rows={4}
-                                            className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
-                                            value={newCandidate.vision}
-                                            onChange={(e) => setNewCandidate({ ...newCandidate, vision: e.target.value })}
-                                            placeholder="Deskripsikan visi dan misi kandidat..."
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">URL Foto (Opsional)</label>
-                                        <input
-                                            type="text"
-                                            className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
-                                            value={newCandidate.imageUrl}
-                                            onChange={(e) => setNewCandidate({ ...newCandidate, imageUrl: e.target.value })}
-                                            placeholder="/candidates/foto.jpg"
-                                        />
-                                    </div>
-
-                                    {error && <p className="text-red-400 text-sm">{error}</p>}
-                                    {success && <p className="text-green-400 text-sm">{success}</p>}
-
-                                    <div className="flex justify-end gap-3">
-                                        <button
-                                            type="button"
-                                            onClick={() => setIsAddingCandidate(false)}
-                                            className="px-6 py-2 rounded-xl text-gray-400 hover:text-white transition"
-                                        >
-                                            Batal
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            disabled={isSubmitting}
-                                            className="btn btn-primary px-8 py-2 rounded-xl"
-                                        >
-                                            {isSubmitting ? "Menyimpan..." : "Simpan Kandidat"}
-                                        </button>
-                                    </div>
-                                </form>
+                        {election?.status === "ACTIVE" && (
+                            <div className="bg-yellow-500/10 border border-yellow-500/30 p-4 rounded-xl flex items-center gap-3">
+                                <span className="text-2xl">⚠️</span>
+                                <div>
+                                    <h3 className="text-yellow-400 font-bold">Pemilihan Sedang Berlangsung</h3>
+                                    <p className="text-gray-400 text-sm">
+                                        Perubahan pada kandidat tidak diizinkan selama periode pemilihan aktif untuk menjaga integritas data.
+                                    </p>
+                                </div>
                             </div>
+                        )}
+
+                        {/* Add Candidate Form */}
+                        {election?.status !== "ACTIVE" && (
+                            !isAddingCandidate ? (
+                                <button
+                                    onClick={() => setIsAddingCandidate(true)}
+                                    className="w-full py-4 border-2 border-dashed border-white/20 rounded-2xl text-gray-400 hover:border-indigo-500 hover:text-indigo-400 transition flex items-center justify-center gap-2 group"
+                                >
+                                    <span className="text-2xl group-hover:scale-110 transition">+</span>
+                                    <span className="font-medium">Tambah Kandidat Baru</span>
+                                </button>
+                            ) : (
+                                <div className="glass p-8 rounded-2xl border border-white/10 bg-white/5">
+                                    <h2 className="text-xl font-semibold text-white mb-6">Tambah Kandidat</h2>
+                                    <form onSubmit={handleAddCandidate} className="space-y-6">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-300 mb-2">Nama Kandidat</label>
+                                            <input
+                                                type="text"
+                                                required
+                                                className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                                                value={newCandidate.name}
+                                                onChange={(e) => setNewCandidate({ ...newCandidate, name: e.target.value })}
+                                                placeholder="Nama lengkap kandidat"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-300 mb-2">Visi & Misi</label>
+                                            <textarea
+                                                required
+                                                rows={4}
+                                                className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                                                value={newCandidate.vision}
+                                                onChange={(e) => setNewCandidate({ ...newCandidate, vision: e.target.value })}
+                                                placeholder="Deskripsikan visi dan misi kandidat..."
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-300 mb-2">URL Foto (Opsional)</label>
+                                            <input
+                                                type="text"
+                                                className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                                                value={newCandidate.imageUrl}
+                                                onChange={(e) => setNewCandidate({ ...newCandidate, imageUrl: e.target.value })}
+                                                placeholder="/candidates/foto.jpg"
+                                            />
+                                        </div>
+
+                                        {error && <p className="text-red-400 text-sm">{error}</p>}
+                                        {success && <p className="text-green-400 text-sm">{success}</p>}
+
+                                        <div className="flex justify-end gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsAddingCandidate(false)}
+                                                className="px-6 py-2 rounded-xl text-gray-400 hover:text-white transition"
+                                            >
+                                                Batal
+                                            </button>
+                                            <button
+                                                type="submit"
+                                                disabled={isSubmitting}
+                                                className="btn btn-primary px-8 py-2 rounded-xl"
+                                            >
+                                                {isSubmitting ? "Menyimpan..." : "Simpan Kandidat"}
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            )
                         )}
 
                         {/* Candidates List */}
@@ -371,13 +385,15 @@ export default function AdminPage() {
                                         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
                                             {candidate.name.charAt(0)}
                                         </div>
-                                        <button
-                                            onClick={() => handleDeleteCandidate(candidate.id)}
-                                            className="text-gray-500 hover:text-red-400 transition"
-                                            title="Hapus Kandidat"
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
-                                        </button>
+                                        {election?.status !== "ACTIVE" && (
+                                            <button
+                                                onClick={() => handleDeleteCandidate(candidate.id)}
+                                                className="text-gray-500 hover:text-red-400 transition"
+                                                title="Hapus Kandidat"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                                            </button>
+                                        )}
                                     </div>
                                     <h3 className="text-lg font-bold text-white mb-2">{candidate.name}</h3>
                                     <p className="text-gray-400 text-sm mb-4 line-clamp-3 flex-1">{candidate.vision}</p>

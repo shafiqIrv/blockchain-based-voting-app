@@ -326,10 +326,15 @@ export class FabricService {
 
 		// For demo: decode vote and increment candidate count
 		// In production, votes are encrypted and counted after election ends
+		// For demo: decode vote and increment candidate count
+		// In production, votes are encrypted and counted after election ends
 		try {
 			const voteData = JSON.parse(atob(encryptedVote));
+			// Support both new array format and legacy single ID format (backward compat)
+			const primaryCandidateId = voteData.candidateIds ? voteData.candidateIds[0] : voteData.candidateId;
+
 			const candidate = election.candidates.find(
-				(c: any) => c.id === voteData.candidateId
+				(c: any) => c.id === primaryCandidateId
 			);
 			if (candidate) {
 				candidate.voteCount += 1;
