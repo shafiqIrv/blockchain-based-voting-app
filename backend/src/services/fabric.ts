@@ -1,3 +1,6 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
 /**
  * Fabric Gateway Service
  * Connects to Hyperledger Fabric network and executes chaincode
@@ -17,9 +20,11 @@ export interface FabricConfig {
 const mockState: {
 	elections: Map<string, any>;
 	votes: Map<string, any>;
+	attendance: Map<string, boolean>; // Tracks if a user (NIM/Email) has received a ballot
 } = {
 	elections: new Map(),
 	votes: new Map(),
+	attendance: new Map(),
 };
 
 // Initialize with seed data
@@ -70,6 +75,8 @@ initializeSeedData();
 export class FabricService {
 	private config: FabricConfig;
 	private connected: boolean = false;
+	private readonly DATA_DIR = path.join(process.cwd(), 'data');
+	private readonly ATTENDANCE_FILE = path.join(process.cwd(), 'data', 'attendance.json');
 
 	constructor() {
 		this.config = {
@@ -78,6 +85,34 @@ export class FabricService {
 			mspId: process.env.FABRIC_MSP_ID || "ITBMSP",
 			peerEndpoint: process.env.FABRIC_PEER_ENDPOINT || "localhost:7051",
 		};
+		this.loadAttendance();
+	}
+
+	private loadAttendance() {
+		try {
+			if (fs.existsSync(this.ATTENDANCE_FILE)) {
+				const data = fs.readFileSync(this.ATTENDANCE_FILE, 'utf-8');
+				const parsed = JSON.parse(data);
+				// Convert array/object back to Map
+				mockState.attendance = new Map(Object.entries(parsed));
+				console.log(`✅ Attendance data loaded (${mockState.attendance.size} records)`);
+			}
+		} catch (e) {
+			console.error("Failed to load attendance data", e);
+		}
+	}
+
+	private saveAttendance() {
+		try {
+			if (!fs.existsSync(this.DATA_DIR)) {
+				fs.mkdirSync(this.DATA_DIR, { recursive: true });
+			}
+			// Convert Map to Object for JSON
+			const obj = Object.fromEntries(mockState.attendance);
+			fs.writeFileSync(this.ATTENDANCE_FILE, JSON.stringify(obj, null, 2));
+		} catch (e) {
+			console.error("Failed to save attendance data", e);
+		}
 	}
 
 	/**
@@ -249,6 +284,22 @@ export class FabricService {
 	): Promise<any | null> {
 		const voteKey = `${electionId}:${tokenIdentifier}`;
 		return mockState.votes.get(voteKey) || null;
+	}
+
+	/**
+	 * Record that a user has requested a ballot (Attendance)
+	 */
+	async recordAttendance(userId: string): Promise<void> {
+		mockState.attendance.set(userId, true);
+		this.saveAttendance();
+		console.log(`📝 Attendance recorded for user: ${userId}`);
+	}
+
+	/**
+	 * Check if a user has received a ballot
+	 */
+	async checkAttendance(userId: string): Promise<boolean> {
+		return mockState.attendance.get(userId) || false;
 	}
 
 	/**

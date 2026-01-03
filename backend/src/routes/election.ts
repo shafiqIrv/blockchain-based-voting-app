@@ -176,24 +176,20 @@ electionRoutes.get("/:id/voters", async (c) => {
 			throw new Error("Failed to fetch users from Oracle");
 		}
 
-		const users: any[] = await response.json();
+		const users = await response.json() as any[];
 
 		// 2. Check Voting Status for each user
 		const votersStatus = await Promise.all(users.map(async (u) => {
-			// Reconstruct Deterministic Token
-			const { createHmac } = await import("node:crypto");
-			const tokenIdentifier = createHmac("sha256", process.env.JWT_SECRET || "default-secret")
-				.update(`${u.nim}:${electionId}`)
-				.digest("hex");
-
-			const hasVoted = await fabricService.hasVoted(electionId, tokenIdentifier);
+			// In Anonymous Voting, we track "Ballot Issued" (Attendance) as a proxy for participation.
+			// We cannot know if they actually dropped the ballot in the box, but we know they picked one up.
+			const hasAttended = await fabricService.checkAttendance(u.email);
 
 			return {
 				nim: u.nim,
 				name: u.name,
 				faculty: u.faculty,
 				role: u.role,
-				hasVoted
+				hasVoted: hasAttended // Maps "Attendance" to "Has Voted" in the UI
 			};
 		}));
 

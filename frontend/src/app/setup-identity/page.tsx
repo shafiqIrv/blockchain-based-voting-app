@@ -5,15 +5,18 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function SetupIdentityPage() {
-    const { isAuthenticated, isTokenMissing, createIdentity, loadIdentity, logout } = useAuth();
+    const { user, isAuthenticated, isTokenMissing, createIdentity, loadIdentity, logout } = useAuth();
     const router = useRouter();
     const [mode, setMode] = useState<"initial" | "load">("initial");
     const [isProcessing, setIsProcessing] = useState(false);
+    const [errorState, setErrorState] = useState<"none" | "already_registered">("none");
 
     // Redirect logic
     useEffect(() => {
         if (!isAuthenticated) {
             router.push("/login");
+        } else if (user?.role === "admin") { // Admins don't need identity
+            router.push("/");
         } else if (!isTokenMissing) {
             router.push("/");
         }
@@ -23,12 +26,18 @@ export default function SetupIdentityPage() {
 
     const handleCreate = async () => {
         setIsProcessing(true);
+        setErrorState("none");
         try {
             await createIdentity();
             // AuthState will update, triggering the redirect above
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
-            alert("Gagal membuat identitas. Coba lagi.");
+            if (e.message && e.message.includes("already registered")) {
+                setErrorState("already_registered");
+                setMode("load");
+            } else {
+                alert("Gagal membuat identitas. Coba lagi.");
+            }
         } finally {
             setIsProcessing(false);
         }
@@ -66,6 +75,20 @@ export default function SetupIdentityPage() {
                                 : "Upload your voting-identity.json file to restore your session."}
                         </p>
                     </div>
+
+                    {/* Error Message UI */}
+                    {errorState === "already_registered" && (
+                        <div className="mb-6 p-4 bg-orange-500/10 border border-orange-500/30 rounded-xl flex items-start gap-3">
+                            <span className="text-2xl">⚠️</span>
+                            <div className="text-left">
+                                <h3 className="text-orange-400 font-semibold text-sm">Already Registered</h3>
+                                <p className="text-gray-400 text-xs mt-1">
+                                    Our records show you have already created an identity.
+                                    Please <b>upload your saved identity file</b> to continue.
+                                </p>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Content */}
                     <div className="space-y-4">

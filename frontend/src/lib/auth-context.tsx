@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		const isPublicPage = ["/login", "/", "/results", "/auth/callback"].includes(pathname);
 		const isSetupPage = pathname === "/setup-identity";
 
-		if (isAuthenticated && isTokenMissing && !isSetupPage) {
+		if (isAuthenticated && isTokenMissing && !isSetupPage && user?.role !== "admin") {
 			router.push("/setup-identity");
 		}
 
@@ -133,7 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 		} catch (error) {
 			console.error("Identity Creation Failed", error);
-			alert("Failed to create identity: " + (error as any).message);
+			throw error; // Re-throw to let UI handle it
 		}
 	};
 
