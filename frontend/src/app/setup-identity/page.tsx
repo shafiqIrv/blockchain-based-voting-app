@@ -15,7 +15,7 @@ export default function SetupIdentityPage() {
         if (!isAuthenticated) {
             router.push("/login");
         } else if (!isTokenMissing) {
-            router.push("/vote");
+            router.push("/");
         }
     }, [isAuthenticated, isTokenMissing, router]);
 
