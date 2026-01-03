@@ -94,7 +94,7 @@ export default function LoginPage() {
 				</div>
 
 				<h1 className="text-3xl font-bold text-white mb-2">
-					ITB Voting
+					Pemira KM ITB
 				</h1>
 				<p className="text-gray-400 mb-8">
 					Masuk untuk melakukan voting (Local Mode)

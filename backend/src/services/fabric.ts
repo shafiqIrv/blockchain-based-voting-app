@@ -29,7 +29,7 @@ function initializeSeedData() {
 	if (!mockState.elections.has(electionId)) {
 		mockState.elections.set(electionId, {
 			id: electionId,
-			name: "Pemilihan Ketua Himpunan Mahasiswa ITB 2024",
+			name: "Pemilihan Ketua Kabinet Keluarga Mahasiswa ITB 2026/2027",
 			startTime: new Date("2024-12-01T00:00:00Z"),
 			endTime: new Date("2026-01-31T23:59:59Z"),
 			candidates: [

@@ -17,7 +17,7 @@ NC='\033[0m'
 
 echo -e "${BLUE}"
 echo "╔════════════════════════════════════════════════════════════╗"
-echo "║     ITB Voting Blockchain - Network Setup                  ║"
+echo "║     Pemira KM ITB Blockchain - Network Setup                  ║"
 echo "╚════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 

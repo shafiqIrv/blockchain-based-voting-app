@@ -23,7 +23,7 @@ export default function Home() {
 							/>
 						</div>
 						<span className="text-xl font-bold text-white">
-							ITB Voting
+							Pemira KM ITB
 						</span>
 					</div>
 
@@ -169,7 +169,7 @@ export default function Home() {
 						<>
 							<h1 className="text-5xl md:text-7xl font-bold text-white mb-6 animate-fadeIn stagger-1">
 								Secure & Transparent
-								<span className="block text-gradient">
+								<span className="block text-gradient pb-4">
 									Blockchain Voting
 								</span>
 							</h1>
@@ -217,59 +217,13 @@ export default function Home() {
 				</div>
 			</section>
 
-			{/* Features Section */}
-			<section className="py-20 px-6">
-				<div className="max-w-6xl mx-auto">
-					<h2 className="text-3xl font-bold text-center text-white mb-12">
-						Mengapa Blockchain Voting?
-					</h2>
 
-					<div className="grid md:grid-cols-3 gap-6">
-						{[
-							{
-								icon: "🔒",
-								title: "Aman & Terenkripsi",
-								description:
-									"Suara dienkripsi dan disimpan di blockchain yang tidak dapat dimanipulasi",
-							},
-							{
-								icon: "👁️",
-								title: "Transparan",
-								description:
-									"Setiap suara dapat diverifikasi tanpa mengungkap identitas pemilih",
-							},
-							{
-								icon: "⚡",
-								title: "Real-time",
-								description:
-									"Hasil pemilihan dihitung secara otomatis setelah periode voting berakhir",
-							},
-						].map((feature, index) => (
-							<div
-								key={index}
-								className="glass glass-hover p-8 animate-fadeIn"
-								style={{ animationDelay: `${index * 0.1}s` }}
-							>
-								<div className="text-4xl mb-4">
-									{feature.icon}
-								</div>
-								<h3 className="text-xl font-semibold text-white mb-3">
-									{feature.title}
-								</h3>
-								<p className="text-gray-400">
-									{feature.description}
-								</p>
-							</div>
-						))}
-					</div>
-				</div>
-			</section>
 
 			{/* Footer */}
 			<footer className="py-8 px-6 border-t border-gray-800">
 				<div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
 					<div className="text-gray-500 text-sm">
-						© 2024 ITB Voting System. Powered by Hyperledger Fabric.
+						© 2025/2026 Pemira KM ITB System. Powered by Hyperledger Fabric.
 					</div>
 					<div className="flex items-center gap-6 text-sm text-gray-500">
 						<span>Institut Teknologi Bandung</span>

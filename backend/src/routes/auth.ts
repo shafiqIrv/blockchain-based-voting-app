@@ -120,4 +120,81 @@ authRoutes.get("/me", async (c) => {
 	}
 });
 
+/**
+ * POST /api/auth/register-voting
+ * Register for voting (Get Blind Signature)
+ * 
+ * 1. User authenticates with JWT
+ * 2. User provides BLINDED token (number)
+ * 3. Server signs it and returns signature
+ * 4. Server marks user as "registered" so they can't get another signature
+ */
+import { blindSignatureService } from "../services/blind-signature";
+import { getUser, authMiddleware } from "../middleware/auth";
+
+// Temporary in-memory store for registered users (should be in DB)
+const registeredUsers = new Set<string>();
+
+authRoutes.post("/register-voting", authMiddleware, async (c) => {
+	try {
+		console.log("[RegisterVoting] Request received");
+		const user = getUser(c);
+		console.log(`[RegisterVoting] User: ${user.email}`);
+
+		const body = await c.req.json().catch(err => {
+			console.error("[RegisterVoting] Failed to parse JSON body:", err);
+			return null;
+		});
+
+		if (!body) {
+			return c.json({ error: "Invalid JSON body" }, 400);
+		}
+
+		const { blindedToken } = body;
+		console.log(`[RegisterVoting] Blinded Token: ${blindedToken}`);
+
+		if (!blindedToken) {
+			return c.json({ error: "Blinded token required" }, 400);
+		}
+
+		// Check double registration
+		if (registeredUsers.has(user.email)) {
+			console.log(`[RegisterVoting] User ${user.email} already registered`);
+			return c.json({ error: "User already registered for voting" }, 403);
+		}
+
+		// Sign the blinded token
+		console.log("[RegisterVoting] Signing token...");
+		const blindSignature = blindSignatureService.signBlinded(blindedToken);
+		console.log("[RegisterVoting] Token signed successfully");
+
+		// Mark as registered
+		registeredUsers.add(user.email);
+
+		const publicKey = blindSignatureService.getPublicKey();
+		console.log("[RegisterVoting] Returning response", { blindSignature, publicKey });
+
+		return c.json({
+			success: true,
+			blindSignature,
+			publicKey
+		});
+
+	} catch (error: any) {
+		console.error("Blind signature error:", error);
+		// Ensure we return JSON even on error
+		return c.json({ error: "Failed to register: " + error.message }, 500);
+	}
+});
+
+/**
+ * GET /api/auth/voting-keys
+ * Public endpoint to get admin public key
+ */
+authRoutes.get("/voting-keys", (c) => {
+	return c.json({
+		publicKey: blindSignatureService.getPublicKey()
+	});
+});
+
 export { authRoutes };

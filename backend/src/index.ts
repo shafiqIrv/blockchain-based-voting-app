@@ -46,7 +46,7 @@ app.route("/api/election", electionRoutes);
 // Root route
 app.get("/", (c) => {
 	return c.json({
-		message: "🗳️ ITB Voting Blockchain API",
+		message: "🗳️ Pemira KM ITB Blockchain API",
 		version: "1.0.0",
 		endpoints: {
 			health: "/health",
@@ -87,7 +87,7 @@ const port = process.env.PORT ? parseInt(process.env.PORT) : 3001;
 // Start server
 init().then(() => {
 	console.log(`
-  🗳️  ITB Voting Blockchain API
+  🗳️  Pemira KM ITB Blockchain API
   ────────────────────────────
   📍 Server:  http://localhost:${port}
   📍 Health:  http://localhost:${port}/health

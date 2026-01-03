@@ -14,11 +14,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-	title: "ITB Voting | Blockchain-Based Voting System",
+	title: "Pemira KM ITB | Blockchain-Based Voting System",
 	description:
 		"Secure and transparent voting system for ITB students powered by Hyperledger Fabric blockchain",
 	keywords: ["voting", "blockchain", "ITB", "election", "hyperledger"],
 };
+
 
 export default function RootLayout({
 	children,
@@ -33,7 +34,9 @@ export default function RootLayout({
 				{/* Animated Background */}
 				<div className="animated-bg" />
 
-				<AuthProvider>{children}</AuthProvider>
+				<AuthProvider>
+					{children}
+				</AuthProvider>
 			</body>
 		</html>
 	);

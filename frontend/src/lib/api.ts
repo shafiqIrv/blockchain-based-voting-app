@@ -111,6 +111,17 @@ class ApiClient {
 		return this.fetch("/api/auth/me");
 	}
 
+	getVotingKeys(): Promise<{ publicKey: { n: string; e: string } }> {
+		return this.fetch("/api/auth/voting-keys");
+	}
+
+	registerVoting(blindedToken: string): Promise<{ success: boolean; blindSignature: string }> {
+		return this.fetch("/api/auth/register-voting", {
+			method: "POST",
+			body: JSON.stringify({ blindedToken })
+		});
+	}
+
 	// Election
 	getCurrentElection(): Promise<Election> {
 		return this.fetch("/api/election");
@@ -139,25 +150,34 @@ class ApiClient {
 	}
 
 	// Vote
+	// Vote
 	submitVote(
-		candidateId: string
+		candidateId: string,
+		tokenIdentifier?: string,
+		signature?: string
 	): Promise<{ success: boolean; message: string; tokenIdentifier: string }> {
 		return this.fetch("/api/vote/submit", {
 			method: "POST",
-			body: JSON.stringify({ candidateId }),
+			body: JSON.stringify({
+				candidateId,
+				tokenIdentifier,
+				signature
+			}),
 		});
 	}
 
-	getVoteStatus(): Promise<{ hasVoted: boolean; tokenIdentifier: string }> {
+	getVoteStatus(): Promise<{ hasVoted: boolean; timestamp?: string }> {
 		return this.fetch("/api/vote/status");
 	}
 
-	verifyVote(
-		tokenId: string,
-		electionId?: string
-	): Promise<VoteVerification> {
-		const params = electionId ? `?electionId=${electionId}` : "";
-		return this.fetch(`/api/vote/verify/${tokenId}${params}`);
+	verifyVote(tokenId: string): Promise<{
+		found: boolean;
+		vote?: {
+			candidateId: string;
+			timestamp: string;
+		}
+	}> {
+		return this.fetch(`/api/vote/verify/${tokenId}`);
 	}
 
 	updateElectionDates(

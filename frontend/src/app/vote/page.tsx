@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { api, Candidate, ElectionStatus } from "@/lib/api";
 
 export default function VotePage() {
-	const { isAuthenticated, isLoading, user, tokenId, setAuthData } = useAuth();
+	const { isAuthenticated, isLoading, user, tokenId, signature, setAuthData } = useAuth();
 	const router = useRouter();
 
 	const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -48,7 +48,23 @@ export default function VotePage() {
 
 			setElectionStatus(statusData);
 			setCandidates(candidatesData.candidates);
-			setHasVoted(voteStatusData.hasVoted);
+
+			// Check if user has voted (either via account or anonymous token)
+			let alreadyVoted = voteStatusData.hasVoted;
+
+			// If account hasn't voted, check the anonymous token if we have one
+			if (!alreadyVoted && tokenId) {
+				try {
+					const verification = await api.verifyVote(tokenId);
+					if (verification.found) {
+						alreadyVoted = true;
+					}
+				} catch (e) {
+					console.log("Token verification check failed or token not yet used");
+				}
+			}
+
+			setHasVoted(alreadyVoted);
 		} catch (err: any) {
 			setError(err.message || "Gagal memuat data");
 		} finally {
@@ -63,14 +79,21 @@ export default function VotePage() {
 		setError(null);
 
 		try {
-			const result = await api.submitVote(selectedCandidate);
+			// Use the blind token and signature for anonymous voting
+			if (!tokenId || !signature) {
+				throw new Error("Token pemilihan tidak ditemukan. Silakan login ulang.");
+			}
+
+			const result = await api.submitVote(selectedCandidate, tokenId, signature);
 			setSuccess(true);
 			setHasVoted(true);
 
-			// Update auth context with new token
-			const token = api.getToken();
-			if (token && result.tokenIdentifier) {
-				setAuthData(token, result.tokenIdentifier, user || undefined);
+			// Update auth context with new token (if changed)
+			if (result.tokenIdentifier) {
+				// For anonymous voting, the result token should match our blind token
+				// We don't really need to setAuthData here as we already have the token
+				// But we can ensure it's synced if needed.
+				// Actually, let's just leave it or remove it since we manage identity via file/localStorage now.
 			}
 		} catch (err: any) {
 			setError(err.message || "Gagal mengirim suara");
