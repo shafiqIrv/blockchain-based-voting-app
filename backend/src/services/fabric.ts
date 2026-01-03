@@ -372,6 +372,8 @@ export class FabricService {
 			// Vote is encrypted, will be counted later
 		}
 
+		this.saveElections(); // Persist changes
+
 		return { success: true, message: "Vote recorded successfully" };
 	}
 
