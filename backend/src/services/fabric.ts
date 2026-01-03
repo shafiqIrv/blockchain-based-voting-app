@@ -21,10 +21,12 @@ const mockState: {
 	elections: Map<string, any>;
 	votes: Map<string, any>;
 	attendance: Map<string, boolean>; // Tracks if a user (NIM/Email) has received a ballot
+	participation: Map<string, boolean>; // Tracks if a user has completed the voting process (confirmed)
 } = {
 	elections: new Map(),
 	votes: new Map(),
 	attendance: new Map(),
+	participation: new Map(),
 };
 
 // Initialize with seed data
@@ -77,6 +79,7 @@ export class FabricService {
 	private connected: boolean = false;
 	private readonly DATA_DIR = path.join(process.cwd(), 'data');
 	private readonly ATTENDANCE_FILE = path.join(process.cwd(), 'data', 'attendance.json');
+	private readonly PARTICIPATION_FILE = path.join(process.cwd(), 'data', 'participation.json');
 	private readonly ELECTIONS_FILE = path.join(process.cwd(), 'data', 'elections.json');
 
 	constructor() {
@@ -87,6 +90,7 @@ export class FabricService {
 			peerEndpoint: process.env.FABRIC_PEER_ENDPOINT || "localhost:7051",
 		};
 		this.loadAttendance();
+		this.loadParticipation();
 		this.loadElections();
 	}
 
@@ -143,6 +147,31 @@ export class FabricService {
 			fs.writeFileSync(this.ATTENDANCE_FILE, JSON.stringify(obj, null, 2));
 		} catch (e) {
 			console.error("Failed to save attendance data", e);
+		}
+	}
+
+	private loadParticipation() {
+		try {
+			if (fs.existsSync(this.PARTICIPATION_FILE)) {
+				const data = fs.readFileSync(this.PARTICIPATION_FILE, 'utf-8');
+				const parsed = JSON.parse(data);
+				mockState.participation = new Map(Object.entries(parsed));
+				console.log(`✅ Participation data loaded (${mockState.participation.size} records)`);
+			}
+		} catch (e) {
+			console.error("Failed to load participation data", e);
+		}
+	}
+
+	private saveParticipation() {
+		try {
+			if (!fs.existsSync(this.DATA_DIR)) {
+				fs.mkdirSync(this.DATA_DIR, { recursive: true });
+			}
+			const obj = Object.fromEntries(mockState.participation);
+			fs.writeFileSync(this.PARTICIPATION_FILE, JSON.stringify(obj, null, 2));
+		} catch (e) {
+			console.error("Failed to save participation data", e);
 		}
 	}
 
@@ -371,6 +400,22 @@ export class FabricService {
 	 */
 	async checkAttendance(userId: string): Promise<boolean> {
 		return mockState.attendance.get(userId) || false;
+	}
+
+	/**
+	 * Record that a user has successfully voted (Participation)
+	 */
+	async recordParticipation(userId: string): Promise<void> {
+		mockState.participation.set(userId, true);
+		this.saveParticipation();
+		console.log(`✅ Participation recorded for user: ${userId}`);
+	}
+
+	/**
+	 * Check if a user has successfully voted
+	 */
+	async checkParticipation(userId: string): Promise<boolean> {
+		return mockState.participation.get(userId) || false;
 	}
 
 	/**

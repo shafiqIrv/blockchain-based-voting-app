@@ -180,6 +180,12 @@ class ApiClient {
 		});
 	}
 
+	confirmParticipation(): Promise<{ success: boolean }> {
+		return this.fetch("/api/vote/confirm", {
+			method: "POST",
+		});
+	}
+
 	getVoteStatus(): Promise<{ hasVoted: boolean; timestamp?: string }> {
 		return this.fetch("/api/vote/status");
 	}
@@ -216,6 +222,7 @@ export interface Voter {
 	faculty: string;
 	role: string;
 	hasVoted: boolean;
+	hasIdentity?: boolean; // New field for detailed status
 }
 
 export const api = new ApiClient();

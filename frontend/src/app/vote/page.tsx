@@ -96,6 +96,17 @@ export default function VotePage() {
 			}
 
 			const result = await api.submitVote(rankedCandidateIds, tokenId, signature);
+
+			// Confirm participation to mark "Sudah Vote" for the authenticated user
+			// This is separate from the anonymous vote itself.
+			try {
+				await api.confirmParticipation();
+			} catch (e) {
+				console.error("Failed to confirm participation status", e);
+				// We don't block success UI because the VOTE (most important) was cast.
+				// But admin tracking might show "Registered" instead of "Voted".
+			}
+
 			setSuccess(true);
 			setHasVoted(true);
 

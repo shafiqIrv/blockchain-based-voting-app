@@ -12,7 +12,7 @@ export class TokenService {
 
 	constructor() {
 		this.secret = process.env.TOKEN_SECRET || "default-token-secret";
-		this.jwtSecret = process.env.JWT_SECRET || "default-jwt-secret";
+		this.jwtSecret = process.env.JWT_SECRET || "default-secret";
 	}
 
 	/**

@@ -75,6 +75,22 @@ voteRoutes.post("/submit", async (c) => {
 });
 
 /**
+ * POST /api/vote/confirm
+ * Confirm participation (authenticated)
+ * Called AFTER successful anonymous vote submission
+ */
+voteRoutes.post("/confirm", authMiddleware, async (c) => {
+	try {
+		const user = getUser(c);
+		await fabricService.recordParticipation(user.email);
+		return c.json({ success: true, message: "Participation confirmed" });
+	} catch (error: any) {
+		console.error("Vote confirmation error:", error);
+		return c.json({ error: "Failed to confirm participation" }, 500);
+	}
+});
+
+/**
  * GET /api/vote/status
  * Check if current user has voted (Authenticated)
  * Legacy/Status check for UI
@@ -92,12 +108,13 @@ voteRoutes.get("/status", authMiddleware, async (c) => {
 		// The server can only say "You are registered".
 
 		const user = getUser(c);
-		// We return false here because we can't know. 
-		// Client side will handle "Has Voted" state via localStorage presence of used token.
+
+		const hasVoted = await fabricService.checkParticipation(user.email);
+		const hasIdentity = await fabricService.checkAttendance(user.email);
 
 		return c.json({
-			hasVoted: false,
-			registered: true, // We should check registration status ideally
+			hasVoted,
+			registered: hasIdentity,
 			tokenIdentifier: "ANONYMOUS",
 		});
 	} catch (error: any) {
