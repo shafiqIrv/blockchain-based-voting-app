@@ -25,6 +25,7 @@ interface AuthContextType {
 
 	createIdentity: () => Promise<void>;
 	loadIdentity: (file: File) => Promise<void>;
+	downloadIdentityFile: (tid: string, sig: string, nim?: string) => void;
 
 	// Legacy support for callback (sets session only)
 	setAuthData: (token: string, tid: string, userData?: User) => void;
@@ -127,9 +128,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 			// 5. Verify (Sanity Check) - Check if signature matches our token
 			// Note: In real app, we should verify signature using verify(rawToken, unblindedSignature)
 
-			// 6. Save & Download
+			// 6. Save (Do not auto-download)
 			saveIdentity(rawToken, unblindedSignature);
-			downloadIdentityFile(rawToken, unblindedSignature);
+			// downloadIdentityFile(rawToken, unblindedSignature); <- Removed auto-download
 
 		} catch (error) {
 			console.error("Identity Creation Failed", error);
@@ -144,7 +145,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		setSignature(sig);
 	};
 
-	const downloadIdentityFile = (tid: string, sig: string) => {
+	// Public helper to download identity
+	const downloadIdentityFile = (tid: string, sig: string, nim?: string) => {
 		const data = JSON.stringify({
 			scheme: "blind-signature-rsa-2048",
 			electionId: user?.electionId || "election-2024",
@@ -158,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement("a");
 		a.href = url;
-		a.download = "voting-identity.json";
+		a.download = `${nim || 'voting'}-identity.json`;
 		document.body.appendChild(a);
 		a.click();
 		document.body.removeChild(a);
@@ -207,6 +209,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 				logout,
 				createIdentity,
 				loadIdentity,
+				downloadIdentityFile,
 				setAuthData
 			}}
 		>

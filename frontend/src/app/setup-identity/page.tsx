@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function SetupIdentityPage() {
-    const { user, isAuthenticated, isTokenMissing, createIdentity, loadIdentity, logout } = useAuth();
+    const { user, isAuthenticated, isTokenMissing, createIdentity, loadIdentity, logout, downloadIdentityFile, tokenId, signature } = useAuth();
     const router = useRouter();
-    const [mode, setMode] = useState<"initial" | "load">("initial");
+    const [mode, setMode] = useState<"initial" | "load" | "success">("initial");
     const [isProcessing, setIsProcessing] = useState(false);
     const [errorState, setErrorState] = useState<"none" | "already_registered">("none");
+    const [hasDownloaded, setHasDownloaded] = useState(false);
 
     // Redirect logic
     useEffect(() => {
@@ -17,19 +18,20 @@ export default function SetupIdentityPage() {
             router.push("/login");
         } else if (user?.role === "admin") { // Admins don't need identity
             router.push("/");
-        } else if (!isTokenMissing) {
+        } else if (!isTokenMissing && mode !== "success") {
             router.push("/");
         }
-    }, [isAuthenticated, isTokenMissing, router]);
+    }, [isAuthenticated, isTokenMissing, router, mode, user]);
 
-    if (!isAuthenticated || !isTokenMissing) return null;
+    if (!isAuthenticated || (!isTokenMissing && mode !== "success")) return null;
 
     const handleCreate = async () => {
         setIsProcessing(true);
         setErrorState("none");
         try {
             await createIdentity();
-            // AuthState will update, triggering the redirect above
+            setMode("success");
+            setHasDownloaded(false);
         } catch (e: any) {
             console.error(e);
             if (e.message && e.message.includes("already registered")) {
@@ -41,6 +43,18 @@ export default function SetupIdentityPage() {
         } finally {
             setIsProcessing(false);
         }
+    };
+
+    const handleDownload = () => {
+        if (tokenId && signature) {
+            // Get NIM from user object (should be available since logged in)
+            downloadIdentityFile(tokenId, signature, (user as any)?.nim || "voting");
+            setHasDownloaded(true);
+        }
+    };
+
+    const handleContinue = () => {
+        router.push("/");
     };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,9 +104,40 @@ export default function SetupIdentityPage() {
                         </div>
                     )}
 
+
                     {/* Content */}
                     <div className="space-y-4">
-                        {mode === "initial" ? (
+                        {mode === "success" ? (
+                            <div className="text-center animate-fadeIn">
+                                <div className="w-16 h-16 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <span className="text-3xl">✓</span>
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-2">Identity Created!</h3>
+                                <p className="text-gray-400 text-sm mb-6">
+                                    Your anonymous voting identity is ready. <br />
+                                    Please download your identity file and keep it safe.
+                                </p>
+
+                                <button
+                                    onClick={handleDownload}
+                                    className="w-full py-3 px-6 bg-green-600 hover:bg-green-500 rounded-xl font-semibold text-white shadow-lg transition-all flex items-center justify-center gap-2 mb-3"
+                                >
+                                    <span>⬇️</span>
+                                    <span>Download Identity File</span>
+                                </button>
+
+                                <button
+                                    onClick={handleContinue}
+                                    disabled={!hasDownloaded}
+                                    className={`w-full py-3 px-6 rounded-xl font-medium transition-all ${hasDownloaded
+                                            ? "bg-white/10 hover:bg-white/20 text-white"
+                                            : "bg-white/5 text-gray-500 cursor-not-allowed"
+                                        }`}
+                                >
+                                    Continue to App →
+                                </button>
+                            </div>
+                        ) : mode === "initial" ? (
                             <>
                                 <button
                                     onClick={handleCreate}

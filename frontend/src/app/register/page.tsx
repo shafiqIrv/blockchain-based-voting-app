@@ -101,7 +101,7 @@ export default function RegisterPage() {
                 </div>
 
                 <h1 className="text-3xl font-bold text-white mb-2">Create Account</h1>
-                <p className="text-gray-400 mb-8">Register to vote in ITB Election</p>
+                <p className="text-gray-400 mb-8">Register to vote in Pemira KM ITB</p>
 
 
                 <form onSubmit={handleSubmit} className="space-y-6 text-left">
