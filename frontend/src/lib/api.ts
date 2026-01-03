@@ -220,6 +220,7 @@ export interface Voter {
 	nim: string;
 	name: string;
 	faculty: string;
+	major: string; // Added major
 	role: string;
 	hasVoted: boolean;
 	hasIdentity?: boolean; // New field for detailed status

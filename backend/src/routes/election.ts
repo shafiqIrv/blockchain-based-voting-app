@@ -228,6 +228,7 @@ electionRoutes.get("/:id/voters", async (c) => {
 				nim: u.nim,
 				name: u.name,
 				faculty: u.faculty,
+				major: u.major, // Include Major field
 				role: u.role,
 				hasIdentity: hasAttended, // Sudah ambil token/registrasi
 				hasVoted: hasParticipated // Sudah konfirmasi mencoblos

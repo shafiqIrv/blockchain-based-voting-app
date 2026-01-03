@@ -25,6 +25,71 @@ export default function AdminPage() {
     // Voters State
     const [voters, setVoters] = useState<Voter[]>([]);
     const [isLoadingVoters, setIsLoadingVoters] = useState(false);
+    const [selectedMajor, setSelectedMajor] = useState("all");
+    const [isFilterOpen, setIsFilterOpen] = useState(false); // New state for custom dropdown
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
+    // Computed unique majors for filter
+    const uniqueMajors = Array.from(new Set(voters.map(v => v.major).filter(Boolean))).sort();
+
+    // Create a map of Major -> NIM Prefix (taking first 3 chars of first matching voter's NIM)
+    const majorPrefixMap = new Map<string, string>();
+    voters.forEach(v => {
+        if (v.major && !majorPrefixMap.has(v.major)) {
+            majorPrefixMap.set(v.major, v.nim.substring(0, 3));
+        }
+    });
+
+    const filteredVoters = voters
+        .filter(v => {
+            if (selectedMajor === "all") return true;
+            return v.major === selectedMajor;
+        })
+        .sort((a, b) => a.nim.localeCompare(b.nim)); // Sort by NIM Ascending
+
+    // Pagination Logic
+    const totalPages = Math.ceil(filteredVoters.length / itemsPerPage);
+    const currentVoters = filteredVoters.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
+    // Generate page numbers to display
+    const getPageNumbers = () => {
+        const pages = [];
+        const maxVisible = 5; // e.g., 1 ... 4 5 6 ... 10
+
+        if (totalPages <= maxVisible) {
+            for (let i = 1; i <= totalPages; i++) pages.push(i);
+        } else {
+            // Always include first, last, current, and neighbors
+            if (currentPage <= 3) {
+                for (let i = 1; i <= 4; i++) pages.push(i);
+                pages.push("...");
+                pages.push(totalPages);
+            } else if (currentPage >= totalPages - 2) {
+                pages.push(1);
+                pages.push("...");
+                for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
+            } else {
+                pages.push(1);
+                pages.push("...");
+                pages.push(currentPage - 1);
+                pages.push(currentPage);
+                pages.push(currentPage + 1);
+                pages.push("...");
+                pages.push(totalPages);
+            }
+        }
+        return pages;
+    };
+
+    // Reset pagination and close dropdown when filter changes
+    useEffect(() => {
+        setCurrentPage(1);
+        setIsFilterOpen(false);
+    }, [selectedMajor]);
 
     useEffect(() => {
         if (!isLoading && (!isAuthenticated || user?.role !== "admin")) {
@@ -407,21 +472,69 @@ export default function AdminPage() {
                 ) : (
                     /* Voters List */
                     <div className="glass rounded-2xl border border-white/10 bg-white/5 overflow-hidden animate-fadeIn">
-                        <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
-                            <h2 className="text-xl font-semibold text-white">Daftar Pemilih ({voters.length})</h2>
-                            <div className="flex gap-4 text-sm">
-                                <span className="flex items-center gap-2 text-green-400">
-                                    <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                                    Sudah Mencoblos: {voters.filter(v => v.hasVoted).length}
-                                </span>
-                                <span className="flex items-center gap-2 text-yellow-400">
-                                    <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
-                                    Sudah Registrasi: {voters.filter(v => v.hasIdentity && !v.hasVoted).length}
-                                </span>
-                                <span className="flex items-center gap-2 text-gray-400">
-                                    <span className="w-2 h-2 rounded-full bg-gray-500"></span>
-                                    Belum Hadir: {voters.filter(v => !v.hasIdentity && !v.hasVoted).length}
-                                </span>
+                        <div className="p-6 border-b border-white/10">
+                            <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
+                                <div className="flex items-center gap-4">
+                                    <h2 className="text-xl font-semibold text-white">Daftar Pemilih ({filteredVoters.length})</h2>
+                                    {/* Major Filter */}
+                                    {/* Major Filter Custom Dropdown */}
+                                    <div className="relative">
+                                        <button
+                                            onClick={() => setIsFilterOpen(!isFilterOpen)}
+                                            className="flex items-center justify-between gap-2 px-4 py-2 bg-[#1a1a20] border border-white/10 rounded-lg text-sm text-gray-300 hover:text-white hover:border-white/20 transition min-w-[200px]"
+                                        >
+                                            <span className="truncate max-w-[200px]">
+                                                {selectedMajor === "all"
+                                                    ? "Semua Jurusan"
+                                                    : `[${majorPrefixMap.get(selectedMajor)}] ${selectedMajor}`}
+                                            </span>
+                                            <svg className={`w-4 h-4 transition-transform ${isFilterOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                        </button>
+
+                                        {isFilterOpen && (
+                                            <>
+                                                <div
+                                                    className="fixed inset-0 z-10"
+                                                    onClick={() => setIsFilterOpen(false)}
+                                                ></div>
+                                                <div className="absolute top-full mt-2 w-full min-w-[240px] right-0 max-h-60 overflow-y-auto bg-[#1a1a20] border border-white/10 rounded-lg shadow-xl z-20">
+                                                    <button
+                                                        onClick={() => setSelectedMajor("all")}
+                                                        className={`w-full text-left px-4 py-2 text-sm transition ${selectedMajor === "all" ? "bg-indigo-600 text-white" : "text-gray-300 hover:bg-white/5"
+                                                            }`}
+                                                    >
+                                                        Semua Jurusan
+                                                    </button>
+                                                    {uniqueMajors.map(major => (
+                                                        <button
+                                                            key={major}
+                                                            onClick={() => setSelectedMajor(major)}
+                                                            className={`w-full text-left px-4 py-2 text-sm transition border-t border-white/5 ${selectedMajor === major ? "bg-indigo-600 text-white" : "text-gray-300 hover:bg-white/5"
+                                                                }`}
+                                                        >
+                                                            <span className="opacity-50 mr-2">[{majorPrefixMap.get(major)}]</span>
+                                                            {major}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex gap-4 text-sm mt-2 md:mt-0">
+                                    <span className="flex items-center gap-2 text-green-400">
+                                        <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                                        Sudah Mencoblos: {filteredVoters.filter(v => v.hasVoted).length}
+                                    </span>
+                                    <span className="flex items-center gap-2 text-yellow-400">
+                                        <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                                        Sudah Registrasi: {filteredVoters.filter(v => v.hasIdentity && !v.hasVoted).length}
+                                    </span>
+                                    <span className="flex items-center gap-2 text-gray-400">
+                                        <span className="w-2 h-2 rounded-full bg-gray-500"></span>
+                                        Belum Hadir: {filteredVoters.filter(v => !v.hasIdentity && !v.hasVoted).length}
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
@@ -438,16 +551,18 @@ export default function AdminPage() {
                                             <th className="px-6 py-4 font-medium">NIM</th>
                                             <th className="px-6 py-4 font-medium">Nama</th>
                                             <th className="px-6 py-4 font-medium">Fakultas</th>
+                                            <th className="px-6 py-4 font-medium">Jurusan</th>
                                             <th className="px-6 py-4 font-medium">Peran</th>
                                             <th className="px-6 py-4 font-medium text-center">Status Voting</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-white/5">
-                                        {voters.map((voter) => (
+                                        {currentVoters.map((voter) => (
                                             <tr key={voter.nim} className="hover:bg-white/5 transition">
                                                 <td className="px-6 py-4 font-mono text-indigo-300">{voter.nim}</td>
                                                 <td className="px-6 py-4 text-white font-medium">{voter.name}</td>
                                                 <td className="px-6 py-4 text-gray-300">{voter.faculty}</td>
+                                                <td className="px-6 py-4 text-gray-300 text-sm">{voter.major}</td>
                                                 <td className="px-6 py-4">
                                                     <span className={`px-2 py-1 rounded text-xs font-bold ${voter.role === 'admin'
                                                         ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
@@ -477,9 +592,52 @@ export default function AdminPage() {
                                 </table>
                             </div>
                         )}
+
+                        {/* Pagination Controls */}
+                        {!isLoadingVoters && filteredVoters.length > 0 && (
+                            <div className="p-4 border-t border-white/10 flex items-center justify-between bg-white/5">
+                                <span className="text-sm text-gray-400">
+                                    Halaman {currentPage} dari {totalPages}
+                                </span>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                        disabled={currentPage === 1}
+                                        className="px-3 py-1 rounded-lg text-sm bg-white/5 text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition"
+                                    >
+                                        &laquo; Prev
+                                    </button>
+
+                                    {getPageNumbers().map((page, index) => (
+                                        typeof page === 'number' ? (
+                                            <button
+                                                key={index}
+                                                onClick={() => setCurrentPage(page)}
+                                                className={`w-8 h-8 rounded-lg text-sm font-medium transition ${currentPage === page
+                                                        ? "bg-indigo-600 text-white shadow-lg"
+                                                        : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+                                                    }`}
+                                            >
+                                                {page}
+                                            </button>
+                                        ) : (
+                                            <span key={index} className="px-2 text-gray-600">...</span>
+                                        )
+                                    ))}
+
+                                    <button
+                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                        disabled={currentPage === totalPages}
+                                        className="px-3 py-1 rounded-lg text-sm bg-white/5 text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition"
+                                    >
+                                        Next &raquo;
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
-        </main>
+        </main >
     );
 }
