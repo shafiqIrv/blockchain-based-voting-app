@@ -105,6 +105,7 @@ authRoutes.get("/me", async (c) => {
 			name: string;
 			tokenIdentifier: string;
 			electionId: string;
+			major?: string;
 			role: "admin" | "voter";
 		};
 
@@ -113,6 +114,7 @@ authRoutes.get("/me", async (c) => {
 			name: decoded.name,
 			tokenIdentifier: decoded.tokenIdentifier,
 			electionId: decoded.electionId,
+			major: decoded.major,
 			role: decoded.role,
 		});
 	} catch (err) {

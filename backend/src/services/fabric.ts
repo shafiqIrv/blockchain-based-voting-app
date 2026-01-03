@@ -63,6 +63,7 @@ function initializeSeedData() {
 				},
 			],
 			totalVotes: 0,
+			votesByMajor: {}, // { majorName: { candidateId: count } }
 			status: "ACTIVE",
 			createdAt: new Date(),
 		});
@@ -368,6 +369,17 @@ export class FabricService {
 			if (candidate) {
 				candidate.voteCount += 1;
 			}
+
+			// Major Breakdown
+			const major = voteData.major;
+			if (major) {
+				if (!election.votesByMajor) election.votesByMajor = {};
+				if (!election.votesByMajor[major]) election.votesByMajor[major] = {};
+				if (!election.votesByMajor[major][primaryCandidateId]) election.votesByMajor[major][primaryCandidateId] = 0;
+
+				election.votesByMajor[major][primaryCandidateId] += 1;
+			}
+
 		} catch (e) {
 			// Vote is encrypted, will be counted later
 		}
@@ -440,8 +452,38 @@ export class FabricService {
 			candidates: [...election.candidates].sort(
 				(a: any, b: any) => b.voteCount - a.voteCount
 			),
+			votesByMajor: election.votesByMajor || {},
 			endedAt: election.endTime,
 		};
+	}
+
+
+	public resetState(): void {
+		mockState.votes.clear();
+		mockState.participation.clear();
+		mockState.elections.clear();
+		// Re-init elections
+		initializeSeedData();
+
+		// Save empty state
+		this.saveElections();
+		this.saveParticipation();
+		// We don't clear attendance (users still exist) or maybe we should?
+		// No, attendance means "Has valid token". If we reset votes, we should reset attendance??
+		// But in this system, attendance = "generated token".
+		// Users already generated tokens. If I reset votes, they can't vote again unless I reset attendance?
+		// User said "Reset seeding" -> meaning Reset Votes.
+		// If I assume users in Oracle match attendance... 
+		// Actually participation is what blocks double voting in the simplistic sense of "Has Voted".
+		// Attendance blocks "Generate Token".
+		// If I reset Attendance, users can generate token again.
+		// If I DON'T reset Attendance, users who already generated token might need that token to vote.
+		// But since I am simulating, I will generate NEW tokens.
+		// So I MUST reset Attendance too, otherwise `getBlindToken` might fail for "Already registered".
+		mockState.attendance.clear();
+		this.saveAttendance();
+
+		console.log("⚠️ SYSTEM RESET: All data cleared.");
 	}
 }
 

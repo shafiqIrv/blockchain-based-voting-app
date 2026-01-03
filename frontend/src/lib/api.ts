@@ -5,6 +5,7 @@ export interface User {
 	name: string;
 	tokenIdentifier: string;
 	electionId: string;
+	major?: string; // Add major
 	role?: "admin" | "voter";
 }
 
@@ -158,24 +159,32 @@ class ApiClient {
 		name: string;
 		totalVotes: number;
 		candidates: Candidate[];
+		votesByMajor?: Record<string, Record<string, number>>;
 		endedAt: string;
 	}> {
 		return this.fetch(`/api/election/${electionId}/results`);
 	}
+
+	getElectionStats(electionId: string): Promise<Record<string, { total: number; voted: number }>> {
+		return this.fetch(`/api/election/${electionId}/stats`);
+	}
+
 
 	// Vote
 	// Vote
 	submitVote(
 		candidateIds: string[],
 		tokenIdentifier?: string,
-		signature?: string
+		signature?: string,
+		major?: string
 	): Promise<{ success: boolean; message: string; tokenIdentifier: string }> {
 		return this.fetch("/api/vote/submit", {
 			method: "POST",
 			body: JSON.stringify({
 				candidateIds,
 				tokenIdentifier,
-				signature
+				signature,
+				major
 			}),
 		});
 	}

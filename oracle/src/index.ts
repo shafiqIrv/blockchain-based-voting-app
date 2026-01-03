@@ -165,6 +165,7 @@ app.post("/auth/login", async (c) => {
 			name: userInfo.name,
 			tokenIdentifier: tokenIdentifier,
 			electionId: electionId,
+			major: userInfo.major, // Add major for demographic stats
 			role: userInfo.role, // Ensure role is in token payload
 		})
 			.setProtectedHeader({ alg: "HS256" })

@@ -9,7 +9,8 @@ export default function AdminPage() {
     const router = useRouter();
     const { user, isAuthenticated, isLoading } = useAuth();
     const [election, setElection] = useState<Election | null>(null);
-    const [activeTab, setActiveTab] = useState<"config" | "voters" | "candidates">("config");
+    const [activeTab, setActiveTab] = useState<"config" | "voters" | "candidates" | "analitik">("config");
+    const [results, setResults] = useState<any>(null); // Store results for analytics
 
     // Config State
     const [startDate, setStartDate] = useState("");
@@ -102,6 +103,21 @@ export default function AdminPage() {
             loadData();
         }
     }, [isAuthenticated, user]);
+
+    useEffect(() => {
+        if (activeTab === "analitik" && election) {
+            loadResults(election.id);
+        }
+    }, [activeTab, election]);
+
+    const loadResults = async (electionId: string) => {
+        try {
+            const data = await api.getResults(electionId);
+            setResults(data);
+        } catch (e) {
+            console.error("Failed to load results", e);
+        }
+    };
 
     const loadData = async () => {
         try {
@@ -241,6 +257,7 @@ export default function AdminPage() {
                         >
                             👔 Kandidat
                         </button>
+
                     </div>
                 </div>
 
@@ -469,7 +486,7 @@ export default function AdminPage() {
                             ))}
                         </div>
                     </div>
-                ) : (
+                ) : activeTab === "voters" ? (
                     /* Voters List */
                     <div className="glass rounded-2xl border border-white/10 bg-white/5 overflow-hidden animate-fadeIn">
                         <div className="p-6 border-b border-white/10">
@@ -614,8 +631,8 @@ export default function AdminPage() {
                                                 key={index}
                                                 onClick={() => setCurrentPage(page)}
                                                 className={`w-8 h-8 rounded-lg text-sm font-medium transition ${currentPage === page
-                                                        ? "bg-indigo-600 text-white shadow-lg"
-                                                        : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+                                                    ? "bg-indigo-600 text-white shadow-lg"
+                                                    : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
                                                     }`}
                                             >
                                                 {page}
@@ -636,8 +653,9 @@ export default function AdminPage() {
                             </div>
                         )}
                     </div>
-                )}
+
+                ) : null}
             </div>
-        </main >
+        </main>
     );
 }

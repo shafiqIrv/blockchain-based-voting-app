@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { fabricService } from "../services/fabric";
+import { authMiddleware, getUser } from "../middleware/auth";
 
 const electionRoutes = new Hono();
 
@@ -112,8 +113,13 @@ electionRoutes.get("/", async (c) => {
  * POST /api/election/:id/dates
  * Update election dates (Admin only)
  */
-electionRoutes.post("/:id/dates", async (c) => {
+electionRoutes.post("/:id/dates", authMiddleware, async (c) => {
 	try {
+		const user = getUser(c);
+		if (user.role !== "admin") {
+			return c.json({ error: "Forbidden: Admin access required" }, 403);
+		}
+
 		const electionId = c.req.param("id");
 		const body = await c.req.json();
 		const { startDate, endDate } = body;
@@ -142,8 +148,13 @@ electionRoutes.post("/:id/dates", async (c) => {
  * POST /api/election/:id/candidates
  * Add a new candidate (Admin only)
  */
-electionRoutes.post("/:id/candidates", async (c) => {
+electionRoutes.post("/:id/candidates", authMiddleware, async (c) => {
 	try {
+		const user = getUser(c);
+		if (user.role !== "admin") {
+			return c.json({ error: "Forbidden: Admin access required" }, 403);
+		}
+
 		const electionId = c.req.param("id");
 		const body = await c.req.json();
 
@@ -164,8 +175,13 @@ electionRoutes.post("/:id/candidates", async (c) => {
  * DELETE /api/election/:id/candidates/:candidateId
  * Remove a candidate (Admin only)
  */
-electionRoutes.delete("/:id/candidates/:candidateId", async (c) => {
+electionRoutes.delete("/:id/candidates/:candidateId", authMiddleware, async (c) => {
 	try {
+		const user = getUser(c);
+		if (user.role !== "admin") {
+			return c.json({ error: "Forbidden: Admin access required" }, 403);
+		}
+
 		const electionId = c.req.param("id");
 		const candidateId = c.req.param("candidateId");
 
@@ -240,6 +256,51 @@ electionRoutes.get("/:id/voters", async (c) => {
 	} catch (error: any) {
 		console.error("Get voters error:", error);
 		return c.json({ error: error.message || "Failed to get voters" }, 500);
+	}
+});
+
+
+
+// Public Stats Endpoint
+electionRoutes.get("/:id/stats", async (c) => {
+	try {
+		const electionId = c.req.param("id");
+
+		// 1. Fetch Users from Oracle (Internal Server-to-Server)
+		const oracleUrl = process.env.ORACLE_URL || "http://localhost:3002";
+		const response = await fetch(`${oracleUrl}/internal/users`, {
+			headers: { "x-internal-secret": process.env.INTERNAL_SECRET || "internal-secret" }
+		});
+
+		if (!response.ok) {
+			throw new Error("Failed to fetch users from Oracle");
+		}
+
+		const users = await response.json() as any[];
+
+		// 2. Aggregate Stats per Major
+		const statsByMajor: Record<string, { total: number; voted: number }> = {};
+
+		// Parallelize checks for performance
+		await Promise.all(users.map(async (u) => {
+			const major = u.major || "Unknown";
+			const hasParticipated = await fabricService.checkParticipation(u.email);
+
+			if (!statsByMajor[major]) {
+				statsByMajor[major] = { total: 0, voted: 0 };
+			}
+
+			statsByMajor[major].total += 1;
+			if (hasParticipated) {
+				statsByMajor[major].voted += 1;
+			}
+		}));
+
+		return c.json(statsByMajor);
+
+	} catch (error: any) {
+		console.error("Get stats error:", error);
+		return c.json({ error: error.message || "Failed to get stats" }, 500);
 	}
 });
 

@@ -20,9 +20,11 @@ voteRoutes.post("/submit", async (c) => {
 			return c.json({ error: "Candidate rankings are required" }, 400);
 		}
 
+
 		// New Anonymous Flow
 		if (tokenIdentifier && signature) {
-			// 1. Verify Signature
+
+			// 1. Verify Blind Signature
 			const isValid = blindSignatureService.verify(tokenIdentifier, signature);
 			if (!isValid) {
 				return c.json({ error: "Invalid voting token signature" }, 403);
@@ -43,6 +45,7 @@ voteRoutes.post("/submit", async (c) => {
 			const encryptedVote = btoa(
 				JSON.stringify({
 					candidateIds,
+					major: body.major,
 					timestamp: new Date().toISOString(),
 				})
 			);

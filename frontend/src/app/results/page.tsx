@@ -11,6 +11,7 @@ interface ElectionResults {
 	totalVotes: number;
 	candidates: Candidate[];
 	endedAt: string;
+	votesByMajor?: Record<string, Record<string, number>>;
 }
 
 export default function ResultsPage() {
@@ -302,9 +303,14 @@ export default function ResultsPage() {
 					</div>
 				</div>
 
+				{/* ANALYTICS SECTION */}
+				{(electionStatus?.status === "ENDED" || user?.role === "admin") && (
+					<AnalyticsSection results={results} />
+				)}
+
 				{/* Verify CTA - Only for non-admin */}
 				{user?.role !== "admin" && (
-					<div className="glass-sm p-6 text-center animate-fadeIn stagger-4">
+					<div className="glass-sm p-6 text-center animate-fadeIn stagger-4 mt-8">
 						<p className="text-gray-400 mb-4">
 							Ingin memverifikasi bahwa suara Anda tercatat dengan
 							benar?
@@ -316,5 +322,142 @@ export default function ResultsPage() {
 				)}
 			</div>
 		</main>
+	);
+}
+
+function AnalyticsSection({ results }: { results: ElectionResults | null }) {
+	const [stats, setStats] = useState<Record<string, { total: number; voted: number }>>({});
+	const [selectedMajor, setSelectedMajor] = useState<string | null>(null);
+
+	useEffect(() => {
+		api.getElectionStats("election-2024").then(setStats).catch(console.error);
+	}, []);
+
+	// Participation Leaderboard Logic
+	const participationData = Object.entries(stats).map(([major, data]) => ({
+		major,
+		...data,
+		percentage: data.total > 0 ? (data.voted / data.total) * 100 : 0
+	})).sort((a, b) => b.percentage - a.percentage);
+
+	// Major Preference Logic
+	// Use results.votesByMajor which is now available via getResults
+	const majorVotes = results?.votesByMajor || {};
+	const majors = Object.keys(majorVotes).sort();
+
+	// Default to first major if none selected
+	useEffect(() => {
+		if (majors.length > 0 && !selectedMajor) {
+			setSelectedMajor(majors[0]);
+		}
+	}, [majors, selectedMajor]);
+
+	const currentMajorVotes = selectedMajor ? majorVotes[selectedMajor] : {};
+	const totalMajorVotes = Object.values(currentMajorVotes).reduce((a: number, b: number) => a + b, 0);
+
+	const sortedCandidates = results?.candidates.map(c => ({
+		...c,
+		majorVoteCount: currentMajorVotes[c.id] || 0
+	})).sort((a, b) => b.majorVoteCount - a.majorVoteCount);
+
+	return (
+		<div className="space-y-8 animate-fadeIn stagger-4">
+			<hr className="border-gray-800" />
+			<h2 className="text-2xl font-bold text-center text-white mb-6">📊 Analitik Pemilihan</h2>
+
+			<div className="grid md:grid-cols-2 gap-8">
+				{/* Participation Leaderboard */}
+				<div className="glass p-6">
+					<h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+						<span>🏆</span> Partisipasi per Jurusan
+					</h3>
+					<div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+						{participationData.map((item, index) => (
+							<div key={item.major} className="glass-sm p-4 relative overflow-hidden">
+								{/* Progress Background */}
+								<div
+									className="absolute top-0 bottom-0 left-0 bg-blue-500/10 transition-all duration-1000"
+									style={{ width: `${item.percentage}%` }}
+								/>
+								<div className="relative flex justify-between items-center z-10">
+									<div>
+										<p className="font-semibold text-white">
+											{index + 1}. {item.major}
+										</p>
+										<p className="text-xs text-gray-400">
+											{item.voted} dari {item.total} pemilih
+										</p>
+									</div>
+									<div className="text-right">
+										<p className="text-lg font-bold text-blue-400">
+											{item.percentage.toFixed(1)}%
+										</p>
+									</div>
+								</div>
+							</div>
+						))}
+						{participationData.length === 0 && (
+							<p className="text-gray-500 text-center py-4">Data tidak tersedia</p>
+						)}
+					</div>
+				</div>
+
+				{/* Major Preference */}
+				<div className="glass p-6">
+					<h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+						<span>📊</span> Pilihan Mayoritas
+					</h3>
+
+					{/* Dropdown */}
+					<div className="mb-6">
+						<label className="text-sm text-gray-400 mb-2 block">Pilih Jurusan</label>
+						<select
+							value={selectedMajor || ""}
+							onChange={(e) => setSelectedMajor(e.target.value)}
+							className="w-full bg-[#1a1a20] border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
+						>
+							{majors.map(m => (
+								<option key={m} value={m}>{m}</option>
+							))}
+						</select>
+					</div>
+
+					{/* Candidate List for Selected Major */}
+					{selectedMajor && totalMajorVotes > 0 ? (
+						<div className="space-y-4">
+							{sortedCandidates?.map((candidate, idx) => {
+								const pct = totalMajorVotes > 0 ? (candidate.majorVoteCount / totalMajorVotes) * 100 : 0;
+								return (
+									<div key={candidate.id} className="relative">
+										<div className="flex items-center gap-3 mb-1">
+											<div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx === 0 ? 'bg-yellow-500 text-black' : 'bg-gray-700 text-white'}`}>
+												{idx + 1}
+											</div>
+											<div className="flex-1">
+												<span className="text-sm font-medium text-gray-200">{candidate.name}</span>
+											</div>
+											<div className="text-right">
+												<span className="text-sm font-bold text-white">{pct.toFixed(1)}%</span>
+											</div>
+										</div>
+										<div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+											<div
+												className={`h-full rounded-full ${idx === 0 ? 'bg-yellow-500' : 'bg-gray-600'}`}
+												style={{ width: `${pct}%` }}
+											/>
+										</div>
+										<p className="text-xs text-gray-500 mt-1 text-right">{candidate.majorVoteCount} suara</p>
+									</div>
+								);
+							})}
+						</div>
+					) : (
+						<div className="text-center py-10 text-gray-500">
+							<p>Pilih jurusan untuk melihat preferensi</p>
+						</div>
+					)}
+				</div>
+			</div>
+		</div>
 	);
 }
