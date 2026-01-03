@@ -25,7 +25,7 @@ interface AuthContextType {
 
 	createIdentity: () => Promise<void>;
 	loadIdentity: (file: File) => Promise<void>;
-	downloadIdentityFile: (tid: string, sig: string, nim?: string) => void;
+	downloadIdentityFile: (tid: string, sig: string, nim?: string) => Promise<void>;
 
 	// Legacy support for callback (sets session only)
 	setAuthData: (token: string, tid: string, userData?: User) => void;
@@ -146,25 +146,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	};
 
 	// Public helper to download identity
-	const downloadIdentityFile = (tid: string, sig: string, nim?: string) => {
-		const data = JSON.stringify({
-			scheme: "blind-signature-rsa-2048",
-			electionId: user?.electionId || "election-2024",
-			tokenIdentifier: tid,
-			signature: sig,
-			createdAt: new Date().toISOString(),
-			note: "KEEP THIS FILE SAFE. IT IS YOUR ONLY WA TO VOTE."
-		}, null, 2);
+	const downloadIdentityFile = async (tid: string, sig: string, nim?: string) => {
+		if (!nim) {
+			// Fallback for admin or weird state, though UI enforces it.
+			console.warn("No NIM provided for encryption, using unencrypted format");
+			// Legacy unencrypted download (or just block it?)
+			// Let's block to force security as requested.
+			alert("Security Error: NIM is required to encrypt the identity file.");
+			return;
+		}
 
-		const blob = new Blob([data], { type: "application/json" });
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement("a");
-		a.href = url;
-		a.download = `${nim || 'voting'}-identity.json`;
-		document.body.appendChild(a);
-		a.click();
-		document.body.removeChild(a);
-		URL.revokeObjectURL(url);
+		try {
+			// 1. Prepare Crypto
+			const salt = window.crypto.getRandomValues(new Uint8Array(16));
+			const iv = window.crypto.getRandomValues(new Uint8Array(12));
+
+			// 2. Derive Key from NIM
+			const key = await deriveKey(nim, salt);
+
+			// 3. Encrypt Payload
+			const payload = {
+				tokenIdentifier: tid,
+				signature: sig,
+				electionId: user?.electionId || "election-2024"
+			};
+			const ciphertext = await encryptData(payload, key, iv);
+
+			// 4. Create File Content
+			const fileData = JSON.stringify({
+				version: 2,
+				scheme: "blind-signature-aes-gcm",
+				nim: nim,
+				salt: buffToBase64(salt),
+				iv: buffToBase64(iv),
+				ciphertext: buffToBase64(ciphertext),
+				createdAt: new Date().toISOString(),
+				note: "ENCRYPTED FILE. DO NOT MODIFY. ONLY OWNER CAN DECRYPT."
+			}, null, 2);
+
+			const blob = new Blob([fileData], { type: "application/json" });
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement("a");
+			a.href = url;
+			a.download = `${nim}-identity.json`;
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+			URL.revokeObjectURL(url);
+		} catch (e) {
+			console.error("Encryption failed", e);
+			alert("Failed to secure identity file.");
+		}
 	};
 
 	const loadIdentity = async (file: File) => {
@@ -172,13 +204,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 			const text = await file.text();
 			const json = JSON.parse(text);
 
-			if (!json.tokenIdentifier || !json.signature) {
-				throw new Error("Invalid identity file");
+			// Strict Check for v2 Encryption
+			if (json.version !== 2 || !json.ciphertext) {
+				// We strictly reject non-encrypted files now as requested
+				throw new Error("Invalid or insecure identity file. Please create a new one.");
 			}
 
-			saveIdentity(json.tokenIdentifier, json.signature);
+			// 1. Initial Metadata Check (Fast Fail)
+			// @ts-ignore
+			const userNim = user?.nim;
+			if (userNim && json.nim && json.nim !== userNim) {
+				throw new Error(`Identity file belongs to another user (${json.nim})`);
+			}
+			if (!userNim) {
+				throw new Error("User NIM not found. Cannot decrypt identity.");
+			}
+
+			// 2. Attempt Decryption
+			try {
+				const salt = base64ToBuff(json.salt);
+				const iv = base64ToBuff(json.iv);
+				const ciphertext = base64ToBuff(json.ciphertext);
+
+				// Derive key using CURRENT user's NIM
+				const key = await deriveKey(userNim, salt);
+
+				// Decrypt
+				const payload = await decryptData(ciphertext, key, iv);
+
+				if (!payload.tokenIdentifier || !payload.signature) {
+					throw new Error("Decrypted data is invalid");
+				}
+
+				saveIdentity(payload.tokenIdentifier, payload.signature);
+
+			} catch (decErr) {
+				console.error("Decryption error", decErr);
+				// Explicitly assume decryption failure = wrong key = wrong owner
+				throw new Error(`Decryption failed. Identity file authentication mismatch.`);
+			}
+
 		} catch (error) {
 			console.error("Load Identity Failed", error);
+			if (error instanceof Error) throw error;
 			throw new Error("Failed to load identity file");
 		}
 	};
@@ -224,4 +292,73 @@ export function useAuth() {
 		throw new Error("useAuth must be used within an AuthProvider");
 	}
 	return context;
+}
+
+// --- Crypto Helpers ---
+
+async function deriveKey(password: string, salt: any): Promise<CryptoKey> {
+	const enc = new TextEncoder();
+	const keyMaterial = await window.crypto.subtle.importKey(
+		"raw",
+		enc.encode(password),
+		{ name: "PBKDF2" },
+		false,
+		["deriveKey"]
+	);
+	return window.crypto.subtle.deriveKey(
+		{
+			name: "PBKDF2",
+			salt: salt,
+			iterations: 100000,
+			hash: "SHA-256",
+		},
+		keyMaterial,
+		{ name: "AES-GCM", length: 256 },
+		false,
+		["encrypt", "decrypt"]
+	);
+}
+
+async function encryptData(data: object, key: CryptoKey, iv: any): Promise<ArrayBuffer> {
+	const enc = new TextEncoder();
+	const encoded = enc.encode(JSON.stringify(data));
+	return window.crypto.subtle.encrypt(
+		{ name: "AES-GCM", iv: iv },
+		key,
+		encoded
+	);
+}
+
+async function decryptData(ciphertext: any, key: CryptoKey, iv: any): Promise<any> {
+	try {
+		const decrypted = await window.crypto.subtle.decrypt(
+			{ name: "AES-GCM", iv: iv },
+			key,
+			ciphertext
+		);
+		const dec = new TextDecoder();
+		return JSON.parse(dec.decode(decrypted));
+	} catch (e) {
+		throw new Error("Decryption failed");
+	}
+}
+
+function buffToBase64(buffer: ArrayBuffer): string {
+	let binary = '';
+	const bytes = new Uint8Array(buffer);
+	const len = bytes.byteLength;
+	for (let i = 0; i < len; i++) {
+		binary += String.fromCharCode(bytes[i]);
+	}
+	return window.btoa(binary);
+}
+
+function base64ToBuff(base64: string): Uint8Array {
+	const binary_string = window.atob(base64);
+	const len = binary_string.length;
+	const bytes = new Uint8Array(len);
+	for (let i = 0; i < len; i++) {
+		bytes[i] = binary_string.charCodeAt(i);
+	}
+	return bytes;
 }

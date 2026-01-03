@@ -174,11 +174,11 @@ export default function AdminPage() {
                             <div className="flex gap-4 text-sm">
                                 <span className="flex items-center gap-2 text-green-400">
                                     <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                                    Sudah Memilih: {voters.filter(v => v.hasVoted).length}
+                                    Sudah Hadir: {voters.filter(v => v.hasVoted).length}
                                 </span>
                                 <span className="flex items-center gap-2 text-gray-400">
                                     <span className="w-2 h-2 rounded-full bg-gray-500"></span>
-                                    Belum Memilih: {voters.filter(v => !v.hasVoted).length}
+                                    Belum Hadir: {voters.filter(v => !v.hasVoted).length}
                                 </span>
                             </div>
                         </div>
@@ -217,11 +217,11 @@ export default function AdminPage() {
                                                 <td className="px-6 py-4 text-center">
                                                     {voter.hasVoted ? (
                                                         <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-xs font-bold border border-green-500/30">
-                                                            ✓ SUDAH
+                                                            ✓ HADIR
                                                         </span>
                                                     ) : (
                                                         <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/30">
-                                                            ✕ BELUM
+                                                            ✕ ABSEN
                                                         </span>
                                                     )}
                                                 </td>

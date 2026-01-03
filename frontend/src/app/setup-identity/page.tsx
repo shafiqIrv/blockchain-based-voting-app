@@ -9,7 +9,8 @@ export default function SetupIdentityPage() {
     const router = useRouter();
     const [mode, setMode] = useState<"initial" | "load" | "success">("initial");
     const [isProcessing, setIsProcessing] = useState(false);
-    const [errorState, setErrorState] = useState<"none" | "already_registered">("none");
+    const [errorState, setErrorState] = useState<"none" | "already_registered" | "wrong_owner">("none");
+    const [errorDetail, setErrorDetail] = useState("");
     const [hasDownloaded, setHasDownloaded] = useState(false);
 
     // Redirect logic
@@ -62,12 +63,23 @@ export default function SetupIdentityPage() {
         if (!file) return;
 
         setIsProcessing(true);
+        setErrorState("none"); // Reset previous errors
+
         try {
             await loadIdentity(file);
-        } catch (err) {
-            alert("Failed to load identity. Please ensure it is a valid voting-identity.json file.");
+        } catch (err: any) {
+            console.error("Upload error:", err);
+            if (err.message && err.message.includes("belongs to another user")) {
+                setErrorState("wrong_owner");
+                // Extract relevant part of message if needed, or just use full message
+                setErrorDetail(err.message);
+            } else {
+                alert("Failed to load identity. Please ensure it is a valid voting-identity.json file.");
+            }
         } finally {
             setIsProcessing(false);
+            // Reset the input so user can select same file again if they want
+            e.target.value = "";
         }
     };
 
@@ -104,6 +116,22 @@ export default function SetupIdentityPage() {
                         </div>
                     )}
 
+                    {/* Error Message UI: Wrong Owner */}
+                    {errorState === "wrong_owner" && (
+                        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-3">
+                            <span className="text-2xl">⛔</span>
+                            <div className="text-left">
+                                <h3 className="text-red-400 font-semibold text-sm">Identity Mismatch</h3>
+                                <p className="text-gray-400 text-xs mt-1">
+                                    {errorDetail || "This identity file does not belong to you."}
+                                </p>
+                                <p className="text-gray-500 text-[10px] mt-1">
+                                    Please upload the file linked to your current login (NIM).
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
 
                     {/* Content */}
                     <div className="space-y-4">
@@ -130,8 +158,8 @@ export default function SetupIdentityPage() {
                                     onClick={handleContinue}
                                     disabled={!hasDownloaded}
                                     className={`w-full py-3 px-6 rounded-xl font-medium transition-all ${hasDownloaded
-                                            ? "bg-white/10 hover:bg-white/20 text-white"
-                                            : "bg-white/5 text-gray-500 cursor-not-allowed"
+                                        ? "bg-white/10 hover:bg-white/20 text-white"
+                                        : "bg-white/5 text-gray-500 cursor-not-allowed"
                                         }`}
                                 >
                                     Continue to App →

@@ -183,6 +183,7 @@ electionRoutes.get("/:id/voters", async (c) => {
 			// In Anonymous Voting, we track "Ballot Issued" (Attendance) as a proxy for participation.
 			// We cannot know if they actually dropped the ballot in the box, but we know they picked one up.
 			const hasAttended = await fabricService.checkAttendance(u.email);
+			console.log(`[VoterStatus] Checking ${u.email} (${u.nim}): Attended=${hasAttended}`);
 
 			return {
 				nim: u.nim,
