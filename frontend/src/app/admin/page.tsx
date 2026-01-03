@@ -9,7 +9,7 @@ export default function AdminPage() {
     const router = useRouter();
     const { user, isAuthenticated, isLoading } = useAuth();
     const [election, setElection] = useState<Election | null>(null);
-    const [activeTab, setActiveTab] = useState<"config" | "voters">("config");
+    const [activeTab, setActiveTab] = useState<"config" | "voters" | "candidates">("config");
 
     // Config State
     const [startDate, setStartDate] = useState("");
@@ -17,6 +17,10 @@ export default function AdminPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+
+    // Candidates State
+    const [isAddingCandidate, setIsAddingCandidate] = useState(false);
+    const [newCandidate, setNewCandidate] = useState({ name: "", vision: "", imageUrl: "" });
 
     // Voters State
     const [voters, setVoters] = useState<Voter[]>([]);
@@ -38,8 +42,18 @@ export default function AdminPage() {
         try {
             const data = await api.getCurrentElection();
             setElection(data);
-            setStartDate(new Date(data.startTime).toISOString().slice(0, 16));
-            setEndDate(new Date(data.endTime).toISOString().slice(0, 16));
+
+            // Convert UTC to "Local ISO" for datetime-local input
+            // 1. Get Date object (which works in local time)
+            // 2. Adjust it by subtracting timezone offset so .toISOString() returns local time values
+            const startD = new Date(data.startTime);
+            const endD = new Date(data.endTime);
+
+            const startLocal = new Date(startD.getTime() - (startD.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+            const endLocal = new Date(endD.getTime() - (endD.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+
+            setStartDate(startLocal);
+            setEndDate(endLocal);
 
             loadVoters(data.id);
         } catch (e) {
@@ -59,6 +73,37 @@ export default function AdminPage() {
         }
     };
 
+    const handleAddCandidate = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!election) return;
+
+        setIsSubmitting(true);
+        setError("");
+
+        try {
+            await api.addCandidate(election.id, newCandidate);
+            setSuccess("Candidate added successfully!");
+            setIsAddingCandidate(false);
+            setNewCandidate({ name: "", vision: "", imageUrl: "" });
+            loadData(); // Refresh data
+        } catch (err: any) {
+            setError(err.message || "Failed to add candidate");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleDeleteCandidate = async (candidateId: string) => {
+        if (!election || !confirm("Are you sure you want to delete this candidate?")) return;
+
+        try {
+            await api.deleteCandidate(election.id, candidateId);
+            loadData(); // Refresh data
+        } catch (err: any) {
+            alert(err.message || "Failed to delete candidate");
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!election) return;
@@ -69,12 +114,31 @@ export default function AdminPage() {
 
         try {
             await api.updateElectionDates(election.id, startDate, endDate);
-            setSuccess("Election dates updated successfully!");
+            setSuccess("Jadwal pemilihan berhasil diperbarui! Halaman akan dimuat ulang...");
+
+            // Artificial delay for better UX
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            window.location.reload();
         } catch (err: any) {
             setError(err.message || "Failed to update election");
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const setStartToNow = () => {
+        // Create date adjusted to local timezone string format for input
+        // The input datetime-local expects YYYY-MM-DDThh:mm
+        const now = new Date();
+        const localIsoString = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+        setStartDate(localIsoString);
+    };
+
+    const setEndToNow = () => {
+        const now = new Date();
+        const localIsoString = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+        setEndDate(localIsoString);
     };
 
     if (isLoading || !isAuthenticated || user?.role !== "admin") {
@@ -105,66 +169,224 @@ export default function AdminPage() {
                         >
                             👥 Status Pemilih
                         </button>
+                        <button
+                            onClick={() => setActiveTab("candidates")}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeTab === "candidates" ? "bg-indigo-600 text-white shadow-lg" : "text-gray-400 hover:text-white"
+                                }`}
+                        >
+                            👔 Kandidat
+                        </button>
                     </div>
                 </div>
 
                 {activeTab === "config" ? (
-                    /* Election Control Card */
                     <div className="glass p-8 rounded-2xl border border-white/10 bg-white/5 animate-fadeIn">
                         <h2 className="text-xl font-semibold text-white mb-6">Konfigurasi Pemilihan</h2>
 
                         {election && (
-                            <form onSubmit={handleSubmit} className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-8">
+                                {/* Current Status Display */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-black/20 p-4 rounded-xl border border-white/5">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                                            Waktu Mulai
-                                        </label>
-                                        <input
-                                            type="datetime-local"
-                                            required
-                                            className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
-                                            value={startDate}
-                                            onChange={(e) => setStartDate(e.target.value)}
-                                        />
+                                        <p className="text-sm text-gray-400">Status Saat Ini</p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className={`w-2 h-2 rounded-full ${election.status === 'ACTIVE' ? 'bg-green-500 animate-pulse' : election.status === 'PENDING' ? 'bg-yellow-500' : 'bg-red-500'}`}></span>
+                                            <span className="text-white font-medium">{election.status}</span>
+                                        </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                                            Waktu Selesai
-                                        </label>
-                                        <input
-                                            type="datetime-local"
-                                            required
-                                            className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
-                                            value={endDate}
-                                            onChange={(e) => setEndDate(e.target.value)}
-                                        />
+                                        <p className="text-sm text-gray-400">Server Time (Estimasi)</p>
+                                        <div className="text-indigo-300 font-mono mt-1">
+                                            {new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'medium' })}
+                                        </div>
+                                    </div>
+                                    <div className="md:col-span-2 border-t border-white/5 pt-3">
+                                        <p className="text-xs text-gray-500 mb-1">Jadwal Terdaftar:</p>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-300">
+                                                Mulai: <span className="text-white">{new Date(election.startTime).toLocaleString('id-ID')}</span>
+                                            </span>
+                                            <span className="text-gray-300">
+                                                Selesai: <span className="text-white">{new Date(election.endTime).toLocaleString('id-ID')}</span>
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {error && (
-                                    <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
-                                        <p className="text-red-400 text-sm">{error}</p>
+                                <form onSubmit={handleSubmit} className="space-y-6 border-t border-white/10 pt-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <div className="flex justify-between items-center mb-2">
+                                                <label className="block text-sm font-medium text-gray-300">
+                                                    Waktu Mulai
+                                                </label>
+                                                <button
+                                                    type="button"
+                                                    onClick={setStartToNow}
+                                                    className="text-xs text-indigo-400 hover:text-indigo-300 transition"
+                                                >
+                                                    Set Sekarang
+                                                </button>
+                                            </div>
+                                            <input
+                                                type="datetime-local"
+                                                required
+                                                className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                                                value={startDate}
+                                                onChange={(e) => setStartDate(e.target.value)}
+                                            />
+                                        </div>
+                                        <div>
+                                            <div className="flex justify-between items-center mb-2">
+                                                <label className="block text-sm font-medium text-gray-300">
+                                                    Waktu Selesai
+                                                </label>
+                                                <button
+                                                    type="button"
+                                                    onClick={setEndToNow}
+                                                    className="text-xs text-indigo-400 hover:text-indigo-300 transition"
+                                                >
+                                                    Set Sekarang
+                                                </button>
+                                            </div>
+                                            <input
+                                                type="datetime-local"
+                                                required
+                                                className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                                                value={endDate}
+                                                onChange={(e) => setEndDate(e.target.value)}
+                                            />
+                                        </div>
                                     </div>
-                                )}
 
-                                {success && (
-                                    <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
-                                        <p className="text-green-400 text-sm">{success}</p>
+                                    {error && (
+                                        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+                                            <p className="text-red-400 text-sm">{error}</p>
+                                        </div>
+                                    )}
+
+                                    {success && (
+                                        <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
+                                            <p className="text-green-400 text-sm">{success}</p>
+                                        </div>
+                                    )}
+
+                                    <div className="flex justify-end">
+                                        <button
+                                            type="submit"
+                                            disabled={isSubmitting}
+                                            className="btn btn-primary px-8 py-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                        >
+                                            {isSubmitting ? (
+                                                <>
+                                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                    <span>Menyimpan...</span>
+                                                </>
+                                            ) : (
+                                                "Simpan Perubahan Jadwal"
+                                            )}
+                                        </button>
                                     </div>
-                                )}
-
-                                <div className="flex justify-end">
-                                    <button
-                                        type="submit"
-                                        disabled={isSubmitting}
-                                        className="btn btn-primary px-8 py-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        {isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
-                                    </button>
-                                </div>
-                            </form>
+                                </form>
+                            </div>
                         )}
+                    </div>
+                ) : activeTab === "candidates" ? (
+                    /* Candidates Management */
+                    <div className="animate-fadeIn space-y-8">
+                        {/* Add Candidate Form */}
+                        {!isAddingCandidate ? (
+                            <button
+                                onClick={() => setIsAddingCandidate(true)}
+                                className="w-full py-4 border-2 border-dashed border-white/20 rounded-2xl text-gray-400 hover:border-indigo-500 hover:text-indigo-400 transition flex items-center justify-center gap-2 group"
+                            >
+                                <span className="text-2xl group-hover:scale-110 transition">+</span>
+                                <span className="font-medium">Tambah Kandidat Baru</span>
+                            </button>
+                        ) : (
+                            <div className="glass p-8 rounded-2xl border border-white/10 bg-white/5">
+                                <h2 className="text-xl font-semibold text-white mb-6">Tambah Kandidat</h2>
+                                <form onSubmit={handleAddCandidate} className="space-y-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">Nama Kandidat</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                                            value={newCandidate.name}
+                                            onChange={(e) => setNewCandidate({ ...newCandidate, name: e.target.value })}
+                                            placeholder="Nama lengkap kandidat"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">Visi & Misi</label>
+                                        <textarea
+                                            required
+                                            rows={4}
+                                            className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                                            value={newCandidate.vision}
+                                            onChange={(e) => setNewCandidate({ ...newCandidate, vision: e.target.value })}
+                                            placeholder="Deskripsikan visi dan misi kandidat..."
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">URL Foto (Opsional)</label>
+                                        <input
+                                            type="text"
+                                            className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                                            value={newCandidate.imageUrl}
+                                            onChange={(e) => setNewCandidate({ ...newCandidate, imageUrl: e.target.value })}
+                                            placeholder="/candidates/foto.jpg"
+                                        />
+                                    </div>
+
+                                    {error && <p className="text-red-400 text-sm">{error}</p>}
+                                    {success && <p className="text-green-400 text-sm">{success}</p>}
+
+                                    <div className="flex justify-end gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsAddingCandidate(false)}
+                                            className="px-6 py-2 rounded-xl text-gray-400 hover:text-white transition"
+                                        >
+                                            Batal
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={isSubmitting}
+                                            className="btn btn-primary px-8 py-2 rounded-xl"
+                                        >
+                                            {isSubmitting ? "Menyimpan..." : "Simpan Kandidat"}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        )}
+
+                        {/* Candidates List */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {election?.candidates.map((candidate) => (
+                                <div key={candidate.id} className="glass p-6 rounded-2xl border border-white/10 bg-white/5 flex flex-col">
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                                            {candidate.name.charAt(0)}
+                                        </div>
+                                        <button
+                                            onClick={() => handleDeleteCandidate(candidate.id)}
+                                            className="text-gray-500 hover:text-red-400 transition"
+                                            title="Hapus Kandidat"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                                        </button>
+                                    </div>
+                                    <h3 className="text-lg font-bold text-white mb-2">{candidate.name}</h3>
+                                    <p className="text-gray-400 text-sm mb-4 line-clamp-3 flex-1">{candidate.vision}</p>
+                                    <div className="mt-auto pt-4 border-t border-white/5">
+                                        <div className="text-xs text-gray-500">ID: {candidate.id}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 ) : (
                     /* Voters List */

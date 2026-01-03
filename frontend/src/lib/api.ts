@@ -139,6 +139,20 @@ class ApiClient {
 		return this.fetch(`/api/election/${electionId}/candidates`);
 	}
 
+	addCandidate(electionId: string, candidate: Partial<Candidate>): Promise<Candidate> {
+		return this.fetch(`/api/election/${electionId}/candidates`, {
+			method: "POST",
+			body: JSON.stringify(candidate),
+		});
+	}
+
+	deleteCandidate(electionId: string, candidateId: string): Promise<{ success: boolean }> {
+		return this.fetch(`/api/election/${electionId}/candidates/${candidateId}`, {
+			method: "DELETE",
+		});
+	}
+
+
 	getResults(electionId: string): Promise<{
 		electionId: string;
 		name: string;
@@ -152,14 +166,14 @@ class ApiClient {
 	// Vote
 	// Vote
 	submitVote(
-		candidateId: string,
+		candidateIds: string[],
 		tokenIdentifier?: string,
 		signature?: string
 	): Promise<{ success: boolean; message: string; tokenIdentifier: string }> {
 		return this.fetch("/api/vote/submit", {
 			method: "POST",
 			body: JSON.stringify({
-				candidateId,
+				candidateIds,
 				tokenIdentifier,
 				signature
 			}),

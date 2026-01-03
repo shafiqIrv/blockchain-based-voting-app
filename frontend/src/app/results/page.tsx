@@ -94,11 +94,12 @@ export default function ResultsPage() {
 							<span className="text-4xl">⏳</span>
 						</div>
 						<h1 className="text-3xl font-bold text-white mb-4">
-							Pemilihan Masih Berlangsung
+							{electionStatus.status === "PENDING" ? "Pemilihan Belum Dimulai" : "Pemilihan Masih Berlangsung"}
 						</h1>
 						<p className="text-gray-400 mb-6">
-							Hasil pemilihan akan tersedia setelah periode voting
-							berakhir.
+							{electionStatus.status === "PENDING"
+								? "Nantikan pembukaan periode voting sesuai jadwal di bawah ini."
+								: "Hasil pemilihan akan tersedia setelah periode voting berakhir."}
 						</p>
 
 						<div className="glass-sm p-4 mb-6">
@@ -176,6 +177,10 @@ export default function ResultsPage() {
 						{electionStatus?.status === "ENDED" ? (
 							<div className="badge badge-success mb-4">
 								✓ Pemilihan Selesai
+							</div>
+						) : electionStatus?.status === "PENDING" ? (
+							<div className="badge badge-info mb-4 bg-blue-500/20 text-blue-400 border-blue-500/30">
+								⏳ Belum Dimulai
 							</div>
 						) : (
 							<div className="badge badge-warning mb-4">

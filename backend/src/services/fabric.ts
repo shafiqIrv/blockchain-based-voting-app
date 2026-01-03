@@ -70,13 +70,14 @@ function initializeSeedData() {
 }
 
 // Initialize seed data on module load
-initializeSeedData();
+// initializeSeedData() - Called in constructor if needed
 
 export class FabricService {
 	private config: FabricConfig;
 	private connected: boolean = false;
 	private readonly DATA_DIR = path.join(process.cwd(), 'data');
 	private readonly ATTENDANCE_FILE = path.join(process.cwd(), 'data', 'attendance.json');
+	private readonly ELECTIONS_FILE = path.join(process.cwd(), 'data', 'elections.json');
 
 	constructor() {
 		this.config = {
@@ -86,6 +87,36 @@ export class FabricService {
 			peerEndpoint: process.env.FABRIC_PEER_ENDPOINT || "localhost:7051",
 		};
 		this.loadAttendance();
+		this.loadElections();
+	}
+
+	private loadElections() {
+		try {
+			if (fs.existsSync(this.ELECTIONS_FILE)) {
+				const data = fs.readFileSync(this.ELECTIONS_FILE, 'utf-8');
+				const parsed = JSON.parse(data);
+				mockState.elections = new Map(Object.entries(parsed));
+				console.log(`✅ Election data loaded (${mockState.elections.size} records)`);
+			} else {
+				// Initial seed if file doesn't exist
+				initializeSeedData();
+				this.saveElections();
+			}
+		} catch (e) {
+			console.error("Failed to load election data", e);
+		}
+	}
+
+	private saveElections() {
+		try {
+			if (!fs.existsSync(this.DATA_DIR)) {
+				fs.mkdirSync(this.DATA_DIR, { recursive: true });
+			}
+			const obj = Object.fromEntries(mockState.elections);
+			fs.writeFileSync(this.ELECTIONS_FILE, JSON.stringify(obj, null, 2));
+		} catch (e) {
+			console.error("Failed to save election data", e);
+		}
 	}
 
 	private loadAttendance() {
@@ -142,15 +173,21 @@ export class FabricService {
 	async getElectionStatus(electionId: string): Promise<any> {
 		const election = await this.getElection(electionId);
 		const now = new Date();
+		const startTime = new Date(election.startTime);
+		const endTime = new Date(election.endTime);
+
+		console.log(`[StatusCheck] Now: ${now.toISOString()} | Start: ${startTime.toISOString()} | End: ${endTime.toISOString()}`);
 
 		let status: string;
-		if (now < new Date(election.startTime)) {
+		if (now < startTime) {
 			status = "PENDING";
-		} else if (now > new Date(election.endTime)) {
+		} else if (now > endTime) {
 			status = "ENDED";
 		} else {
 			status = "ACTIVE";
 		}
+
+		console.log(`[StatusCheck] Calculated Status: ${status}`);
 
 		return {
 			electionId,
@@ -195,6 +232,8 @@ export class FabricService {
 			throw new Error(`Election ${electionId} not found`);
 		}
 
+		console.log(`[UpdateDates] New Start: ${startTime.toISOString()} | New End: ${endTime.toISOString()}`);
+
 		election.startTime = startTime;
 		election.endTime = endTime;
 
@@ -208,7 +247,34 @@ export class FabricService {
 			election.status = "ACTIVE";
 		}
 
+		this.saveElections(); // Fix missing save
 		return election;
+	}
+
+	async addCandidate(electionId: string, candidate: any): Promise<any> {
+		const election = mockState.elections.get(electionId);
+		if (!election) throw new Error("Election not found");
+
+		candidate.id = candidate.id || `candidate-${Date.now()}`;
+		candidate.voteCount = 0;
+
+		election.candidates.push(candidate);
+		this.saveElections();
+		return candidate;
+	}
+
+	async deleteCandidate(electionId: string, candidateId: string): Promise<void> {
+		const election = mockState.elections.get(electionId);
+		if (!election) throw new Error("Election not found");
+
+		const initialLength = election.candidates.length;
+		election.candidates = election.candidates.filter((c: any) => c.id !== candidateId);
+
+		if (election.candidates.length === initialLength) {
+			throw new Error("Candidate not found");
+		}
+
+		this.saveElections();
 	}
 
 	/**

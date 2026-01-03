@@ -139,6 +139,45 @@ electionRoutes.post("/:id/dates", async (c) => {
 });
 
 /**
+ * POST /api/election/:id/candidates
+ * Add a new candidate (Admin only)
+ */
+electionRoutes.post("/:id/candidates", async (c) => {
+	try {
+		const electionId = c.req.param("id");
+		const body = await c.req.json();
+
+		// Basic validation
+		if (!body.name || !body.vision) {
+			return c.json({ error: "Name and Vision are required" }, 400);
+		}
+
+		const candidate = await fabricService.addCandidate(electionId, body);
+		return c.json(candidate);
+	} catch (error: any) {
+		console.error("Add candidate error:", error);
+		return c.json({ error: error.message }, 500);
+	}
+});
+
+/**
+ * DELETE /api/election/:id/candidates/:candidateId
+ * Remove a candidate (Admin only)
+ */
+electionRoutes.delete("/:id/candidates/:candidateId", async (c) => {
+	try {
+		const electionId = c.req.param("id");
+		const candidateId = c.req.param("candidateId");
+
+		await fabricService.deleteCandidate(electionId, candidateId);
+		return c.json({ success: true });
+	} catch (error: any) {
+		console.error("Delete candidate error:", error);
+		return c.json({ error: error.message }, 500);
+	}
+});
+
+/**
  * GET /api/election/:id/voters
  * Get list of voters and their status (Admin only)
  */
