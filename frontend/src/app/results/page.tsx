@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api, Candidate, ElectionStatus } from "@/lib/api";
+import { api, Candidate, ElectionStatus, IRVResult } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
 interface ElectionResults {
@@ -23,6 +23,9 @@ export default function ResultsPage() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
+	// Lift up IRV state
+	const [irvData, setIrvData] = useState<IRVResult | null>(null);
+
 	useEffect(() => {
 		loadResults();
 	}, []);
@@ -39,6 +42,12 @@ export default function ResultsPage() {
 			try {
 				const resultsData = await api.getResults("election-2024");
 				setResults(resultsData);
+
+				// Fetch IRV data if results available (or if admin)
+				if (status.status === "ENDED" || user?.role === 'admin') {
+					api.getElectionIRV("election-2024").then(setIrvData).catch(console.error);
+				}
+
 			} catch (e: any) {
 				// Allow admin to bypass UI check, but if API fails, still show partial or handle it.
 				// However, the API logic for admin now returns results even if not ended.
@@ -108,9 +117,7 @@ export default function ResultsPage() {
 								Berakhir pada:
 							</p>
 							<p className="text-lg text-white">
-								{new Date(
-									electionStatus.endTime
-								).toLocaleString("id-ID", {
+								{new Date(electionStatus.endTime).toLocaleString("id-ID", {
 									dateStyle: "full",
 									timeStyle: "short",
 								})}
@@ -157,13 +164,38 @@ export default function ResultsPage() {
 	}
 
 	// Results available
-	const winner = results?.candidates[0];
-	const totalVotes = results?.totalVotes || 0;
+	const totalVotes = results?.totalVotes || 0; // Keep original total for FPTP display
+
+	// Determine Winner Logic (IRV Priority)
+	let winner = results?.candidates[0]; // Default to FPTP winner
+	let winnerVoteCount = winner?.voteCount || 0;
+	let winnerPercentage = 0;
+	let finalRoundTotal = totalVotes; // Might change in IRV
+
+	// If IRV data exists and has a winner
+	if (irvData && irvData.winnerId && irvData.rounds.length > 0) {
+		const trueWinnerId = irvData.winnerId;
+		const finalRound = irvData.rounds[irvData.rounds.length - 1];
+		const winnerInFinal = finalRound.candidates.find(c => c.id === trueWinnerId);
+
+		if (winnerInFinal) {
+			// Find candidate object for name/image
+			const candidateObj = results?.candidates.find(c => c.id === trueWinnerId);
+			if (candidateObj) {
+				winner = candidateObj;
+				winnerVoteCount = winnerInFinal.voteCount;
+				finalRoundTotal = finalRound.candidates.reduce((a, b) => a + b.voteCount, 0); // Active votes only
+			}
+		}
+	}
+
+	if (winner) {
+		winnerPercentage = finalRoundTotal > 0 ? (winnerVoteCount / finalRoundTotal) * 100 : 0;
+	}
 
 	return (
 		<main className="min-h-screen py-24 px-6">
 			<div className="max-w-4xl mx-auto">
-				{/* Header */}
 				{/* Header */}
 				<div className="mb-12 animate-fadeIn">
 					<div className="flex justify-between items-start mb-6">
@@ -202,80 +234,30 @@ export default function ResultsPage() {
 						<div className="relative">
 							<span className="text-5xl mb-4 block">🏆</span>
 							<h2 className="text-sm text-indigo-400 uppercase tracking-wider mb-2">
-								Pemenang
+								Pemenang {irvData?.winnerId ? "(IRV Final)" : ""}
 							</h2>
 							<h3 className="text-3xl font-bold text-white mb-2">
 								{winner.name}
 							</h3>
 							<p className="text-2xl text-gradient font-bold mb-4">
-								{winner.voteCount} suara (
-								{totalVotes > 0
-									? (
-										(winner.voteCount! / totalVotes) *
-										100
-									).toFixed(1)
-									: 0}
-								%)
+								{winnerVoteCount} suara (
+								{winnerPercentage.toFixed(1)}%)
 							</p>
+							{irvData?.winnerId && (
+								<p className="text-xs text-gray-500 mt-2">
+									*Memenangkan &gt;50% suara pada putaran {irvData.rounds.length}
+								</p>
+							)}
 						</div>
 					</div>
 				)}
 
-				{/* All Results */}
-				<div className="space-y-4 mb-8">
-					{results?.candidates.map((candidate, index) => {
-						const percentage =
-							totalVotes > 0
-								? (candidate.voteCount! / totalVotes) * 100
-								: 0;
+				{/* IRV SECTION */}
+				{(electionStatus?.status === "ENDED" || user?.role === "admin") && (
+					<IRVSection results={results} irvData={irvData} />
+				)}
 
-						return (
-							<div
-								key={candidate.id}
-								className="glass p-6 animate-fadeIn"
-								style={{
-									animationDelay: `${(index + 1) * 0.1}s`,
-								}}
-							>
-								<div className="flex items-center gap-4 mb-4">
-									<div
-										className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${index === 0
-											? "bg-gradient-to-br from-yellow-400 to-orange-500"
-											: index === 1
-												? "bg-gradient-to-br from-gray-300 to-gray-400"
-												: index === 2
-													? "bg-gradient-to-br from-amber-600 to-amber-700"
-													: "bg-gray-600"
-											}`}
-									>
-										{index + 1}
-									</div>
-									<div className="flex-1">
-										<h3 className="text-lg font-semibold text-white">
-											{candidate.name}
-										</h3>
-										<p className="text-sm text-gray-400">
-											{candidate.voteCount} suara
-										</p>
-									</div>
-									<div className="text-right">
-										<span className="text-2xl font-bold text-white">
-											{percentage.toFixed(1)}%
-										</span>
-									</div>
-								</div>
 
-								{/* Progress Bar */}
-								<div className="h-3 bg-gray-800 rounded-full overflow-hidden">
-									<div
-										className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-1000"
-										style={{ width: `${percentage}%` }}
-									></div>
-								</div>
-							</div>
-						);
-					})}
-				</div>
 
 				{/* Stats */}
 				<div className="grid md:grid-cols-3 gap-4 mb-8">
@@ -307,6 +289,8 @@ export default function ResultsPage() {
 				{(electionStatus?.status === "ENDED" || user?.role === "admin") && (
 					<AnalyticsSection results={results} />
 				)}
+
+
 
 				{/* Verify CTA - Only for non-admin */}
 				{user?.role !== "admin" && (
@@ -477,6 +461,82 @@ function AnalyticsSection({ results }: { results: ElectionResults | null }) {
 						</div>
 					)}
 				</div>
+			</div>
+		</div>
+	);
+}
+
+function IRVSection({ results, irvData }: { results: ElectionResults | null, irvData: IRVResult | null }) {
+	if (!irvData) return null;
+
+	return (
+		<div className="space-y-8 animate-fadeIn stagger-5">
+			<hr className="border-gray-800" />
+			<div className="group">
+				<h2 className="text-2xl font-bold text-center text-white mb-2 flex items-center justify-center gap-2">
+					🧮 Perhitungan Detail (IRV)
+				</h2>
+				<p className="text-center text-gray-400 text-sm group-hover:text-gray-300">Alur eliminasi dan transfer suara</p>
+			</div>
+
+			<div className="grid gap-6 animate-fadeIn">
+				{irvData.rounds.map((round) => (
+					<div key={round.roundNumber} className="glass p-6 relative overflow-hidden">
+						<div className="absolute top-0 right-0 p-4 opacity-10 text-6xl font-black text-white">
+							{round.roundNumber}
+						</div>
+						<div className="flex justify-between items-center mb-6 relative z-10">
+							<h3 className="text-xl font-bold text-white flex items-center gap-2">
+								<span className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-sm">{round.roundNumber}</span>
+								Putaran {round.roundNumber}
+							</h3>
+							{round.eliminatedId && (
+								<span className="badge badge-error gap-2">
+									❌ Eliminasi: {results?.candidates.find(c => c.id === round.eliminatedId)?.name}
+								</span>
+							)}
+						</div>
+						{/* List candidates and votes */}
+						<div className="space-y-3 relative z-10">
+							{round.candidates.map((c, idx) => {
+								const candidateName = results?.candidates.find(cand => cand.id === c.id)?.name || c.id;
+								const isEliminated = c.id === round.eliminatedId;
+								const totalVotes = round.candidates.reduce((a, b) => a + b.voteCount, 0);
+								const pct = (c.voteCount / totalVotes) * 100;
+
+								return (
+									<div key={c.id} className={`relative p-3 rounded-lg overflow-hidden transition-all ${idx === 0 ? 'bg-indigo-500/20 border border-indigo-500/30' : 'bg-white/5'} ${isEliminated ? 'opacity-50 grayscale border border-red-500/30' : ''}`}>
+										{/* Bar BG */}
+										<div className="absolute top-0 left-0 bottom-0 bg-white/5 transition-all duration-500" style={{ width: `${pct}%` }}></div>
+
+										<div className="relative flex justify-between items-center">
+											<div className="flex items-center gap-3">
+												<span className="font-mono text-xs text-gray-500 w-6">#{idx + 1}</span>
+												<span className="text-white font-medium">{candidateName}</span>
+											</div>
+											<div className="text-right">
+												<span className="text-white font-bold block">{c.voteCount}</span>
+												<span className="text-xs text-gray-400">{pct.toFixed(1)}%</span>
+											</div>
+										</div>
+									</div>
+								)
+							})}
+						</div>
+					</div>
+				))}
+				{irvData.winnerId && (
+					<div className="glass p-8 bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-500/30 text-center animate-pulse-slow">
+						<span className="text-6xl mb-4 block">🎉</span>
+						<h3 className="text-xl font-bold text-white mb-2">Pemenang Terpilih</h3>
+						<p className="text-3xl text-green-400 font-bold mb-2">
+							{results?.candidates.find(c => c.id === irvData.winnerId)?.name}
+						</p>
+						<p className="text-sm text-green-200/70">
+							Memperoleh &gt;50% suara setelah {irvData.rounds.length} putaran
+						</p>
+					</div>
+				)}
 			</div>
 		</div>
 	);

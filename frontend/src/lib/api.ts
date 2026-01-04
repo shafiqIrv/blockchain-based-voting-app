@@ -9,6 +9,17 @@ export interface User {
 	role?: "admin" | "voter";
 }
 
+export interface IRVRound {
+	roundNumber: number;
+	candidates: { id: string; voteCount: number }[];
+	eliminatedId?: string;
+}
+
+export interface IRVResult {
+	winnerId: string | null;
+	rounds: IRVRound[];
+}
+
 export interface Candidate {
 	id: string;
 	name: string;
@@ -168,6 +179,11 @@ class ApiClient {
 	getElectionStats(electionId: string): Promise<Record<string, { total: number; voted: number }>> {
 		return this.fetch(`/api/election/${electionId}/stats`);
 	}
+
+	getElectionIRV(electionId: string): Promise<IRVResult> {
+		return this.fetch(`/api/election/${electionId}/irv`);
+	}
+
 
 
 	// Vote

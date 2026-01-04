@@ -304,4 +304,46 @@ electionRoutes.get("/:id/stats", async (c) => {
 	}
 });
 
+// IRV Result Endpoint
+electionRoutes.get("/:id/irv", async (c) => {
+	try {
+		const electionId = c.req.param("id");
+
+		// 1. Auth Check (Admin or Election Ended)
+		// For simplicity in this demo, we check if election is ended OR explicit admin token
+		const authHeader = c.req.header("Authorization");
+		let isAdmin = false;
+
+		if (authHeader && authHeader.startsWith("Bearer ")) {
+			const token = authHeader.substring(7);
+			const jwt = await import("jsonwebtoken");
+			try {
+				const decoded = jwt.default.verify(token, process.env.JWT_SECRET || "default-secret") as any;
+				if (decoded.role === "admin") isAdmin = true;
+			} catch (e) {
+				// Ignore invalid token, just treat as non-admin
+			}
+		}
+
+		const election = await fabricService.getElection(electionId);
+		if (election.status !== "ENDED" && !isAdmin) {
+			return c.json({ error: "Results not available yet" }, 403);
+		}
+
+		// 2. Calculate IRV
+		const ballots = await fabricService.getBallots(electionId);
+		// Map candidate IDs from election data
+		const candidateIds = election.candidates.map(c => c.id);
+
+		const { calculateIRV } = await import("../services/irv");
+		const irvResult = calculateIRV(ballots, candidateIds);
+
+		return c.json(irvResult);
+
+	} catch (error: any) {
+		console.error("Get IRV error:", error);
+		return c.json({ error: error.message || "Failed to get IRV results" }, 500);
+	}
+});
+
 export { electionRoutes };

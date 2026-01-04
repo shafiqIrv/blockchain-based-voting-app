@@ -93,6 +93,7 @@ export class FabricService {
 		this.loadAttendance();
 		this.loadParticipation();
 		this.loadElections();
+		this.loadVotes();
 	}
 
 	private loadElections() {
@@ -148,6 +149,33 @@ export class FabricService {
 			fs.writeFileSync(this.ATTENDANCE_FILE, JSON.stringify(obj, null, 2));
 		} catch (e) {
 			console.error("Failed to save attendance data", e);
+		}
+	}
+
+	private readonly VOTES_FILE = path.join(process.cwd(), 'data', 'votes.json');
+
+	private loadVotes() {
+		try {
+			if (fs.existsSync(this.VOTES_FILE)) {
+				const data = fs.readFileSync(this.VOTES_FILE, 'utf-8');
+				const parsed = JSON.parse(data);
+				mockState.votes = new Map(Object.entries(parsed));
+				console.log(`✅ Votes loaded (${mockState.votes.size} records)`);
+			}
+		} catch (e) {
+			console.error("Failed to load votes", e);
+		}
+	}
+
+	private saveVotes() {
+		try {
+			if (!fs.existsSync(this.DATA_DIR)) {
+				fs.mkdirSync(this.DATA_DIR, { recursive: true });
+			}
+			const obj = Object.fromEntries(mockState.votes);
+			fs.writeFileSync(this.VOTES_FILE, JSON.stringify(obj, null, 2));
+		} catch (e) {
+			console.error("Failed to save votes", e);
 		}
 	}
 
@@ -350,6 +378,7 @@ export class FabricService {
 			encryptedVote,
 			timestamp: new Date(),
 		});
+		this.saveVotes();
 
 		// Update election total votes
 		election.totalVotes += 1;
@@ -485,6 +514,33 @@ export class FabricService {
 
 		console.log("⚠️ SYSTEM RESET: All data cleared.");
 	}
+
+
+	/**
+	 * Get raw ballots for IRV (Internal Use / Advanced Stats)
+	 * Decrypts all votes for the election and returns ranked choice lists.
+	 */
+	async getBallots(electionId: string): Promise<string[][]> {
+		const ballots: string[][] = [];
+		const prefix = `${electionId}:`;
+
+		for (const [key, vote] of mockState.votes.entries()) {
+			if (key.startsWith(prefix)) {
+				try {
+					const voteData = JSON.parse(atob(vote.encryptedVote));
+					// Normalize to array of IDs
+					const ranking = voteData.candidateIds || (voteData.candidateId ? [voteData.candidateId] : []);
+					if (ranking.length > 0) {
+						ballots.push(ranking);
+					}
+				} catch (e) {
+					console.error(`Failed to decrypt vote ${key}`, e);
+				}
+			}
+		}
+		return ballots;
+	}
 }
 
+// Force restart
 export const fabricService = new FabricService();
