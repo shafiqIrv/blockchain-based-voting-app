@@ -1,546 +1,65 @@
 import * as fs from 'fs';
 import * as path from 'path';
-
-/**
- * Fabric Gateway Service
- * Connects to Hyperledger Fabric network and executes chaincode
- *
- * Note: This is a simplified mock implementation for development.
- * In production, use the actual fabric-gateway SDK.
- */
-
-export interface FabricConfig {
-	channelName: string;
-	chaincodeName: string;
-	mspId: string;
-	peerEndpoint: string;
-}
-
-// Mock data store for development (simulates blockchain state)
-const mockState: {
-	elections: Map<string, any>;
-	votes: Map<string, any>;
-	attendance: Map<string, boolean>; // Tracks if a user (NIM/Email) has received a ballot
-	participation: Map<string, boolean>; // Tracks if a user has completed the voting process (confirmed)
-} = {
-	elections: new Map(),
-	votes: new Map(),
-	attendance: new Map(),
-	participation: new Map(),
-};
-
-// Initialize with seed data
-function initializeSeedData() {
-	const electionId = "election-2024";
-
-	if (!mockState.elections.has(electionId)) {
-		mockState.elections.set(electionId, {
-			id: electionId,
-			name: "Pemilihan Ketua Kabinet Keluarga Mahasiswa ITB 2026/2027",
-			startTime: new Date("2024-12-01T00:00:00Z"),
-			endTime: new Date("2026-01-31T23:59:59Z"),
-			candidates: [
-				{
-					id: "candidate-1",
-					name: "Ahmad Fauzan",
-					vision: "Membangun himpunan yang inklusif dan inovatif dengan fokus pada pengembangan soft skills mahasiswa serta kolaborasi antar jurusan.",
-					imageUrl: "/candidates/candidate1.jpg",
-					voteCount: 0,
-				},
-				{
-					id: "candidate-2",
-					name: "Siti Nurhaliza",
-					vision: "Transformasi digital himpunan untuk meningkatkan keterlibatan mahasiswa dan transparansi organisasi melalui platform teknologi modern.",
-					imageUrl: "/candidates/candidate2.jpg",
-					voteCount: 0,
-				},
-				{
-					id: "candidate-3",
-					name: "Budi Santoso",
-					vision: "Memperkuat jaringan alumni dan industri untuk membuka lebih banyak peluang magang dan karir bagi mahasiswa.",
-					imageUrl: "/candidates/candidate3.jpg",
-					voteCount: 0,
-				},
-			],
-			totalVotes: 0,
-			votesByMajor: {}, // { majorName: { candidateId: count } }
-			status: "ACTIVE",
-			createdAt: new Date(),
-		});
-
-		console.log("✅ Seed data initialized for election:", electionId);
-	}
-}
-
-// Initialize seed data on module load
-// initializeSeedData() - Called in constructor if needed
+import { Gateway, Wallets, Contract, Network } from 'fabric-network';
 
 export class FabricService {
-	private config: FabricConfig;
-	private connected: boolean = false;
-	private readonly DATA_DIR = path.join(process.cwd(), 'data');
-	private readonly ATTENDANCE_FILE = path.join(process.cwd(), 'data', 'attendance.json');
-	private readonly PARTICIPATION_FILE = path.join(process.cwd(), 'data', 'participation.json');
-	private readonly ELECTIONS_FILE = path.join(process.cwd(), 'data', 'elections.json');
+    private gateway: Gateway | null = null;
+    private network: Network | null = null;
+    private contract: Contract | null = null;
 
-	constructor() {
-		this.config = {
-			channelName: process.env.FABRIC_CHANNEL_NAME || "votingchannel",
-			chaincodeName: process.env.FABRIC_CHAINCODE_NAME || "voting",
-			mspId: process.env.FABRIC_MSP_ID || "ITBMSP",
-			peerEndpoint: process.env.FABRIC_PEER_ENDPOINT || "localhost:7051",
-		};
-		this.loadAttendance();
-		this.loadParticipation();
-		this.loadElections();
-		this.loadVotes();
-	}
+    constructor() {
+        // Konfigurasi diambil dari .env
+    }
 
-	private loadElections() {
-		try {
-			if (fs.existsSync(this.ELECTIONS_FILE)) {
-				const data = fs.readFileSync(this.ELECTIONS_FILE, 'utf-8');
-				const parsed = JSON.parse(data);
-				mockState.elections = new Map(Object.entries(parsed));
-				console.log(`✅ Election data loaded (${mockState.elections.size} records)`);
-			} else {
-				// Initial seed if file doesn't exist
-				initializeSeedData();
-				this.saveElections();
-			}
-		} catch (e) {
-			console.error("Failed to load election data", e);
-		}
-	}
+    async connect(): Promise<void> {
+        const ccpPath = path.resolve(process.env.FABRIC_CONNECTION_PROFILE || '../network/connection.json');
+        const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
 
-	private saveElections() {
-		try {
-			if (!fs.existsSync(this.DATA_DIR)) {
-				fs.mkdirSync(this.DATA_DIR, { recursive: true });
-			}
-			const obj = Object.fromEntries(mockState.elections);
-			fs.writeFileSync(this.ELECTIONS_FILE, JSON.stringify(obj, null, 2));
-		} catch (e) {
-			console.error("Failed to save election data", e);
-		}
-	}
+        const walletPath = path.resolve(process.env.FABRIC_WALLET_PATH || './wallet');
+        const wallet = await Wallets.newFileSystemWallet(walletPath);
 
-	private loadAttendance() {
-		try {
-			if (fs.existsSync(this.ATTENDANCE_FILE)) {
-				const data = fs.readFileSync(this.ATTENDANCE_FILE, 'utf-8');
-				const parsed = JSON.parse(data);
-				// Convert array/object back to Map
-				mockState.attendance = new Map(Object.entries(parsed));
-				console.log(`✅ Attendance data loaded (${mockState.attendance.size} records)`);
-			}
-		} catch (e) {
-			console.error("Failed to load attendance data", e);
-		}
-	}
+        // Pastikan identitas admin sudah ada di wallet
+        const identity = await wallet.get('admin');
+        if (!identity) {
+            throw new Error('Admin identity not found in wallet. Run enrollAdmin.ts first.');
+        }
 
-	private saveAttendance() {
-		try {
-			if (!fs.existsSync(this.DATA_DIR)) {
-				fs.mkdirSync(this.DATA_DIR, { recursive: true });
-			}
-			// Convert Map to Object for JSON
-			const obj = Object.fromEntries(mockState.attendance);
-			fs.writeFileSync(this.ATTENDANCE_FILE, JSON.stringify(obj, null, 2));
-		} catch (e) {
-			console.error("Failed to save attendance data", e);
-		}
-	}
+        this.gateway = new Gateway();
+        await this.gateway.connect(ccp, {
+            wallet,
+            identity: 'admin',
+            discovery: { enabled: true, asLocalhost: true }
+        });
 
-	private readonly VOTES_FILE = path.join(process.cwd(), 'data', 'votes.json');
+        this.network = await this.gateway.getNetwork(process.env.FABRIC_CHANNEL_NAME || 'votingchannel');
+        this.contract = this.network.getContract(process.env.FABRIC_CHAINCODE_NAME || 'voting');
+        console.log("✅ Connected to Hyperledger Fabric Network");
+    }
 
-	private loadVotes() {
-		try {
-			if (fs.existsSync(this.VOTES_FILE)) {
-				const data = fs.readFileSync(this.VOTES_FILE, 'utf-8');
-				const parsed = JSON.parse(data);
-				mockState.votes = new Map(Object.entries(parsed));
-				console.log(`✅ Votes loaded (${mockState.votes.size} records)`);
-			}
-		} catch (e) {
-			console.error("Failed to load votes", e);
-		}
-	}
+    // Pemanggilan fungsi chaincode
+    async getElection(electionId: string): Promise<any> {
+        const result = await this.contract?.evaluateTransaction('getElectionStatus', electionId);
+        return JSON.parse(result?.toString() || '{}');
+    }
 
-	private saveVotes() {
-		try {
-			if (!fs.existsSync(this.DATA_DIR)) {
-				fs.mkdirSync(this.DATA_DIR, { recursive: true });
-			}
-			const obj = Object.fromEntries(mockState.votes);
-			fs.writeFileSync(this.VOTES_FILE, JSON.stringify(obj, null, 2));
-		} catch (e) {
-			console.error("Failed to save votes", e);
-		}
-	}
+    async castVote(electionId: string, tokenIdentifier: string, encryptedVote: string): Promise<void> {
+        // Mengirim transaksi ke ITBMSP dan KPUMSP untuk memenuhi kebijakan endorsement
+        await this.contract?.submitTransaction('castVote', electionId, tokenIdentifier, encryptedVote);
+    }
 
-	private loadParticipation() {
-		try {
-			if (fs.existsSync(this.PARTICIPATION_FILE)) {
-				const data = fs.readFileSync(this.PARTICIPATION_FILE, 'utf-8');
-				const parsed = JSON.parse(data);
-				mockState.participation = new Map(Object.entries(parsed));
-				console.log(`✅ Participation data loaded (${mockState.participation.size} records)`);
-			}
-		} catch (e) {
-			console.error("Failed to load participation data", e);
-		}
-	}
+    async checkAttendance(voterEmail: string): Promise<boolean> {
+        const result = await this.contract?.evaluateTransaction('checkAttendance', voterEmail);
+        return result?.toString() === 'true';
+    }
 
-	private saveParticipation() {
-		try {
-			if (!fs.existsSync(this.DATA_DIR)) {
-				fs.mkdirSync(this.DATA_DIR, { recursive: true });
-			}
-			const obj = Object.fromEntries(mockState.participation);
-			fs.writeFileSync(this.PARTICIPATION_FILE, JSON.stringify(obj, null, 2));
-		} catch (e) {
-			console.error("Failed to save participation data", e);
-		}
-	}
+    async recordAttendance(voterEmail: string): Promise<void> {
+        await this.contract?.submitTransaction('recordAttendance', voterEmail);
+    }
 
-	/**
-	 * Connect to Fabric network
-	 * In development, this is a no-op
-	 */
-	async connect(): Promise<void> {
-		// In production, establish actual connection
-		console.log("🔗 Fabric service initialized (mock mode)");
-		this.connected = true;
-	}
-
-	/**
-	 * Get election by ID
-	 */
-	async getElection(electionId: string): Promise<any> {
-		const election = mockState.elections.get(electionId);
-		if (!election) {
-			throw new Error(`Election ${electionId} not found`);
-		}
-		return election;
-	}
-
-	/**
-	 * Get election status
-	 */
-	async getElectionStatus(electionId: string): Promise<any> {
-		const election = await this.getElection(electionId);
-		const now = new Date();
-		const startTime = new Date(election.startTime);
-		const endTime = new Date(election.endTime);
-
-		console.log(`[StatusCheck] Now: ${now.toISOString()} | Start: ${startTime.toISOString()} | End: ${endTime.toISOString()}`);
-
-		let status: string;
-		if (now < startTime) {
-			status = "PENDING";
-		} else if (now > endTime) {
-			status = "ENDED";
-		} else {
-			status = "ACTIVE";
-		}
-
-		console.log(`[StatusCheck] Calculated Status: ${status}`);
-
-		return {
-			electionId,
-			name: election.name,
-			status,
-			startTime: election.startTime,
-			endTime: election.endTime,
-			totalVotes: election.totalVotes,
-		};
-	}
-
-	/**
-	 * Get candidates for an election
-	 */
-	async getCandidates(electionId: string): Promise<any[]> {
-		const election = await this.getElection(electionId);
-		const now = new Date();
-
-		// Hide vote counts if election is still active
-		if (now <= new Date(election.endTime)) {
-			return election.candidates.map((c: any) => ({
-				id: c.id,
-				name: c.name,
-				vision: c.vision,
-				imageUrl: c.imageUrl,
-			}));
-		}
-
-		return election.candidates;
-	}
-
-	/**
-	 * Update election start and end dates
-	 */
-	async updateElectionDates(
-		electionId: string,
-		startTime: Date,
-		endTime: Date
-	): Promise<any> {
-		const election = mockState.elections.get(electionId);
-		if (!election) {
-			throw new Error(`Election ${electionId} not found`);
-		}
-
-		console.log(`[UpdateDates] New Start: ${startTime.toISOString()} | New End: ${endTime.toISOString()}`);
-
-		election.startTime = startTime;
-		election.endTime = endTime;
-
-		// Re-evaluate status
-		const now = new Date();
-		if (now < startTime) {
-			election.status = "PENDING";
-		} else if (now > endTime) {
-			election.status = "ENDED";
-		} else {
-			election.status = "ACTIVE";
-		}
-
-		this.saveElections(); // Fix missing save
-		return election;
-	}
-
-	async addCandidate(electionId: string, candidate: any): Promise<any> {
-		const election = mockState.elections.get(electionId);
-		if (!election) throw new Error("Election not found");
-
-		candidate.id = candidate.id || `candidate-${Date.now()}`;
-		candidate.voteCount = 0;
-
-		election.candidates.push(candidate);
-		this.saveElections();
-		return candidate;
-	}
-
-	async deleteCandidate(electionId: string, candidateId: string): Promise<void> {
-		const election = mockState.elections.get(electionId);
-		if (!election) throw new Error("Election not found");
-
-		const initialLength = election.candidates.length;
-		election.candidates = election.candidates.filter((c: any) => c.id !== candidateId);
-
-		if (election.candidates.length === initialLength) {
-			throw new Error("Candidate not found");
-		}
-
-		this.saveElections();
-	}
-
-	/**
-	 * Check if a token has already voted
-	 */
-	async hasVoted(
-		electionId: string,
-		tokenIdentifier: string
-	): Promise<boolean> {
-		const voteKey = `${electionId}:${tokenIdentifier}`;
-		return mockState.votes.has(voteKey);
-	}
-
-	/**
-	 * Cast a vote
-	 */
-	async castVote(
-		electionId: string,
-		tokenIdentifier: string,
-		encryptedVote: string
-	): Promise<{ success: boolean; message: string }> {
-		// Check if already voted
-		if (await this.hasVoted(electionId, tokenIdentifier)) {
-			throw new Error("Token has already been used to vote");
-		}
-
-		const election = await this.getElection(electionId);
-		const now = new Date();
-
-		// Check if election is active
-		if (now < new Date(election.startTime)) {
-			throw new Error("Election has not started yet");
-		}
-		if (now > new Date(election.endTime)) {
-			throw new Error("Election has ended");
-		}
-
-		// Store vote
-		const voteKey = `${electionId}:${tokenIdentifier}`;
-		mockState.votes.set(voteKey, {
-			tokenIdentifier,
-			electionId,
-			encryptedVote,
-			timestamp: new Date(),
-		});
-		this.saveVotes();
-
-		// Update election total votes
-		election.totalVotes += 1;
-
-		// For demo: decode vote and increment candidate count
-		// In production, votes are encrypted and counted after election ends
-		// For demo: decode vote and increment candidate count
-		// In production, votes are encrypted and counted after election ends
-		try {
-			const voteData = JSON.parse(atob(encryptedVote));
-			// Support both new array format and legacy single ID format (backward compat)
-			const primaryCandidateId = voteData.candidateIds ? voteData.candidateIds[0] : voteData.candidateId;
-
-			const candidate = election.candidates.find(
-				(c: any) => c.id === primaryCandidateId
-			);
-			if (candidate) {
-				candidate.voteCount += 1;
-			}
-
-			// Major Breakdown
-			const major = voteData.major;
-			if (major) {
-				if (!election.votesByMajor) election.votesByMajor = {};
-				if (!election.votesByMajor[major]) election.votesByMajor[major] = {};
-				if (!election.votesByMajor[major][primaryCandidateId]) election.votesByMajor[major][primaryCandidateId] = 0;
-
-				election.votesByMajor[major][primaryCandidateId] += 1;
-			}
-
-		} catch (e) {
-			// Vote is encrypted, will be counted later
-		}
-
-		this.saveElections(); // Persist changes
-
-		return { success: true, message: "Vote recorded successfully" };
-	}
-
-	/**
-	 * Verify a vote exists
-	 */
-	async getVote(
-		electionId: string,
-		tokenIdentifier: string
-	): Promise<any | null> {
-		const voteKey = `${electionId}:${tokenIdentifier}`;
-		return mockState.votes.get(voteKey) || null;
-	}
-
-	/**
-	 * Record that a user has requested a ballot (Attendance)
-	 */
-	async recordAttendance(userId: string): Promise<void> {
-		mockState.attendance.set(userId, true);
-		this.saveAttendance();
-		console.log(`📝 Attendance recorded for user: ${userId}`);
-	}
-
-	/**
-	 * Check if a user has received a ballot
-	 */
-	async checkAttendance(userId: string): Promise<boolean> {
-		return mockState.attendance.get(userId) || false;
-	}
-
-	/**
-	 * Record that a user has successfully voted (Participation)
-	 */
-	async recordParticipation(userId: string): Promise<void> {
-		mockState.participation.set(userId, true);
-		this.saveParticipation();
-		console.log(`✅ Participation recorded for user: ${userId}`);
-	}
-
-	/**
-	 * Check if a user has successfully voted
-	 */
-	async checkParticipation(userId: string): Promise<boolean> {
-		return mockState.participation.get(userId) || false;
-	}
-
-	/**
-	 * Get election results (only if election has ended)
-	 */
-	async getResults(electionId: string, bypassTimeCheck: boolean = false): Promise<any> {
-		const election = await this.getElection(electionId);
-		const now = new Date();
-
-		if (!bypassTimeCheck && now <= new Date(election.endTime)) {
-			throw new Error(
-				"Results are not available until the election ends"
-			);
-		}
-
-		return {
-			electionId,
-			name: election.name,
-			totalVotes: election.totalVotes,
-			candidates: [...election.candidates].sort(
-				(a: any, b: any) => b.voteCount - a.voteCount
-			),
-			votesByMajor: election.votesByMajor || {},
-			endedAt: election.endTime,
-		};
-	}
-
-
-	public resetState(): void {
-		mockState.votes.clear();
-		mockState.participation.clear();
-		mockState.elections.clear();
-		// Re-init elections
-		initializeSeedData();
-
-		// Save empty state
-		this.saveElections();
-		this.saveParticipation();
-		// We don't clear attendance (users still exist) or maybe we should?
-		// No, attendance means "Has valid token". If we reset votes, we should reset attendance??
-		// But in this system, attendance = "generated token".
-		// Users already generated tokens. If I reset votes, they can't vote again unless I reset attendance?
-		// User said "Reset seeding" -> meaning Reset Votes.
-		// If I assume users in Oracle match attendance... 
-		// Actually participation is what blocks double voting in the simplistic sense of "Has Voted".
-		// Attendance blocks "Generate Token".
-		// If I reset Attendance, users can generate token again.
-		// If I DON'T reset Attendance, users who already generated token might need that token to vote.
-		// But since I am simulating, I will generate NEW tokens.
-		// So I MUST reset Attendance too, otherwise `getBlindToken` might fail for "Already registered".
-		mockState.attendance.clear();
-		this.saveAttendance();
-
-		console.log("⚠️ SYSTEM RESET: All data cleared.");
-	}
-
-
-	/**
-	 * Get raw ballots for IRV (Internal Use / Advanced Stats)
-	 * Decrypts all votes for the election and returns ranked choice lists.
-	 */
-	async getBallots(electionId: string): Promise<string[][]> {
-		const ballots: string[][] = [];
-		const prefix = `${electionId}:`;
-
-		for (const [key, vote] of mockState.votes.entries()) {
-			if (key.startsWith(prefix)) {
-				try {
-					const voteData = JSON.parse(atob(vote.encryptedVote));
-					// Normalize to array of IDs
-					const ranking = voteData.candidateIds || (voteData.candidateId ? [voteData.candidateId] : []);
-					if (ranking.length > 0) {
-						ballots.push(ranking);
-					}
-				} catch (e) {
-					console.error(`Failed to decrypt vote ${key}`, e);
-				}
-			}
-		}
-		return ballots;
-	}
+    async getCandidates(electionId: string): Promise<any[]> {
+        const result = await this.contract?.evaluateTransaction('getCandidates', electionId);
+        return JSON.parse(result?.toString() || '[]');
+    }
 }
 
-// Force restart
 export const fabricService = new FabricService();

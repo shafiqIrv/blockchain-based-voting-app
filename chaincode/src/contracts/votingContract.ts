@@ -258,6 +258,23 @@ export class VotingContract extends Contract {
         return voteBytes.toString();
     }
 
+	@Transaction()
+	public async recordAttendance(ctx: Context, voterEmail: string): Promise<void> {
+		const exists = await this.checkAttendance(ctx, voterEmail);
+		if (exists) {
+			throw new Error(`Voter ${voterEmail} already registered/attended`);
+		}
+		// Simpan tanda kehadiran (voter sudah ambil ballot)
+		await ctx.stub.putState(`ATTENDANCE_${voterEmail}`, Buffer.from("true"));
+	}
+
+	@Transaction(false)
+	@Returns("boolean")
+	public async checkAttendance(ctx: Context, voterEmail: string): Promise<boolean> {
+		const data = await ctx.stub.getState(`ATTENDANCE_${voterEmail}`);
+		return data && data.length > 0;
+	}
+
     // ==================== HELPERS ====================
 
     @Transaction(false)
