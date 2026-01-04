@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { Gateway, Wallets, Contract, Network } from 'fabric-network';
+import { v4 as uuidv4 } from 'uuid';
 
 export class FabricService {
     private gateway: Gateway | null = null;
@@ -130,7 +131,18 @@ export class FabricService {
     }
 
     async addCandidate(electionId: string, candidateData: any): Promise<any> {
-        await this.contract?.submitTransaction('addCandidate', electionId, JSON.stringify(candidateData));
+        // Chaincode expects: electionId, candidateId, name, vision, imageUrl
+        const candidateId = uuidv4(); // Generate ID here since frontend doesn't send it
+        const { name, vision, imageUrl } = candidateData;
+
+        await this.contract?.submitTransaction(
+            'addCandidate',
+            electionId,
+            candidateId,
+            name,
+            vision,
+            imageUrl || ""
+        );
         return this.getCandidates(electionId);
     }
 

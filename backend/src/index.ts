@@ -8,6 +8,7 @@ import "dotenv/config";
 import { authRoutes } from "./routes/auth";
 import { voteRoutes } from "./routes/vote";
 import { electionRoutes } from "./routes/election";
+import { uploadRoutes } from "./routes/upload";
 
 // Import services
 import { fabricService } from "./services/fabric";
@@ -41,7 +42,14 @@ app.get("/health", (c) => {
 // API Routes
 app.route("/api/auth", authRoutes);
 app.route("/api/vote", voteRoutes);
+app.route("/api/auth", authRoutes);
+app.route("/api/vote", voteRoutes);
 app.route("/api/election", electionRoutes);
+app.route("/api/upload", uploadRoutes);
+
+// Static files
+import { serveStatic } from "@hono/node-server/serve-static";
+app.use("/uploads/*", serveStatic({ root: "./public" }));
 
 // Root route
 app.get("/", (c) => {

@@ -10,18 +10,20 @@
 		"lint": "eslint src/"
 	},
 	"dependencies": {
-		"hono": "^4.6.0",
 		"@hono/node-server": "^1.13.0",
-		"fabric-network": "^2.2.20",
+		"@types/uuid": "^11.0.0",
+		"dotenv": "^16.4.5",
 		"fabric-ca-client": "^2.2.20",
+		"fabric-network": "^2.2.20",
+		"hono": "^4.6.0",
 		"jsonwebtoken": "^9.0.2",
-		"dotenv": "^16.4.5"
+		"uuid": "^13.0.0"
 	},
 	"devDependencies": {
-		"@types/node": "^22.0.0",
 		"@types/jsonwebtoken": "^9.0.7",
-		"typescript": "^5.6.0",
+		"@types/node": "^22.0.0",
+		"eslint": "^9.0.0",
 		"tsx": "^4.19.0",
-		"eslint": "^9.0.0"
+		"typescript": "^5.6.0"
 	}
 }

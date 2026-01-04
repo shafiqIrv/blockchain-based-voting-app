@@ -22,6 +22,7 @@ export default function AdminPage() {
     // Candidates State
     const [isAddingCandidate, setIsAddingCandidate] = useState(false);
     const [newCandidate, setNewCandidate] = useState({ name: "", vision: "", imageUrl: "" });
+    const [isUploading, setIsUploading] = useState(false);
 
     // Voters State
     const [voters, setVoters] = useState<Voter[]>([]);
@@ -550,14 +551,60 @@ export default function AdminPage() {
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-300 mb-2">URL Foto (Opsional)</label>
-                                            <input
-                                                type="text"
-                                                className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
-                                                value={newCandidate.imageUrl}
-                                                onChange={(e) => setNewCandidate({ ...newCandidate, imageUrl: e.target.value })}
-                                                placeholder="/candidates/foto.jpg"
-                                            />
+                                            <label className="block text-sm font-medium text-gray-300 mb-2">Foto Kandidat</label>
+                                            <div className="flex items-center gap-4">
+                                                {newCandidate.imageUrl && (
+                                                    <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-white/20">
+                                                        <img
+                                                            src={newCandidate.imageUrl}
+                                                            alt="Preview"
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setNewCandidate({ ...newCandidate, imageUrl: "" })}
+                                                            className="absolute top-0 right-0 bg-red-500 text-white p-0.5 rounded-bl opacity-80 hover:opacity-100"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                <div className="flex-1">
+                                                    <input
+                                                        type="file"
+                                                        accept="image/png, image/jpeg, image/jpg"
+                                                        className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 cursor-pointer"
+                                                        onChange={async (e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (!file) return;
+
+                                                            setIsUploading(true);
+                                                            const formData = new FormData();
+                                                            formData.append("file", file);
+
+                                                            try {
+                                                                // Use localhost:3001 explicitly or env
+                                                                const res = await fetch("http://localhost:3001/api/upload", {
+                                                                    method: "POST",
+                                                                    body: formData,
+                                                                });
+
+                                                                if (!res.ok) throw new Error("Upload failed");
+
+                                                                const data = await res.json();
+                                                                setNewCandidate({ ...newCandidate, imageUrl: data.url });
+                                                            } catch (err) {
+                                                                console.error(err);
+                                                                alert("Gagal mengupload foto");
+                                                            } finally {
+                                                                setIsUploading(false);
+                                                            }
+                                                        }}
+                                                        disabled={isUploading}
+                                                    />
+                                                    {isUploading && <p className="text-xs text-indigo-400 mt-1">Mengupload...</p>}
+                                                </div>
+                                            </div>
                                         </div>
 
                                         {error && <p className="text-red-400 text-sm">{error}</p>}

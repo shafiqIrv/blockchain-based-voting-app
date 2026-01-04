@@ -16,6 +16,7 @@ coverage/
 *.sqlite3
 oracle/data/
 backend/data/
+backend/public/uploads/
 
 # Hyperledger Fabric
 network/organizations/
