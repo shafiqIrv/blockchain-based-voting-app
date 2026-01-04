@@ -15,7 +15,7 @@ PeerOrgs:
       Domain: itb.ac.id
       EnableNodeOUs: true
       Template:
-          Count: 1
+          Count: 2
           SANS:
               - localhost
       Users:
@@ -25,7 +25,7 @@ PeerOrgs:
       Domain: kpu.itb.ac.id
       EnableNodeOUs: true
       Template:
-          Count: 1
+          Count: 2
           SANS:
               - localhost
       Users:

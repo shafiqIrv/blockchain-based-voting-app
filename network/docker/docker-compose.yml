@@ -10,7 +10,9 @@ networks:
 volumes:
     orderer.voting.com:
     peer0.itb.ac.id:
+    peer1.itb.ac.id:
     peer0.kpu.itb.ac.id:
+    peer1.kpu.itb.ac.id:
 
 services:
     # Orderer
@@ -82,6 +84,32 @@ services:
             - 7051:7051
         networks:
             - voting-network
+    peer1.itb.ac.id:
+        container_name: peer1.itb.ac.id
+        image: hyperledger/fabric-peer:2.5
+        environment:
+            - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+            - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=voting-network
+            - FABRIC_LOGGING_SPEC=INFO
+            - CORE_PEER_TLS_ENABLED=true
+            - CORE_PEER_ID=peer1.itb.ac.id
+            - CORE_PEER_ADDRESS=peer1.itb.ac.id:8051  # Port internal baru
+            - CORE_PEER_LISTENADDRESS=0.0.0.0:8051
+            - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.itb.ac.id:7051 # Menunjuk ke peer0
+            - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1.itb.ac.id:8051
+            - CORE_PEER_LOCALMSPID=ITBMSP
+            - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+            - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+            - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+        volumes:
+            - /var/run/docker.sock:/host/var/run/docker.sock
+            - ../organizations/peerOrganizations/itb.ac.id/peers/peer1.itb.ac.id/msp:/etc/hyperledger/fabric/msp
+            - ../organizations/peerOrganizations/itb.ac.id/peers/peer1.itb.ac.id/tls:/etc/hyperledger/fabric/tls
+            - peer1.itb.ac.id:/var/hyperledger/production
+        ports:
+            - 8051:8051
+        networks:
+            - voting-network
 
     # KPU Peer
     peer0.kpu.itb.ac.id:
@@ -113,6 +141,32 @@ services:
         command: peer node start
         ports:
             - 9051:9051
+        networks:
+            - voting-network
+    peer1.kpu.itb.ac.id:
+        container_name: peer1.kpu.itb.ac.id
+        image: hyperledger/fabric-peer:2.5
+        environment:
+            - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+            - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=voting-network
+            - FABRIC_LOGGING_SPEC=INFO
+            - CORE_PEER_TLS_ENABLED=true
+            - CORE_PEER_ID=peer1.kpu.itb.ac.id
+            - CORE_PEER_ADDRESS=peer1.kpu.itb.ac.id:10051 # Port internal baru
+            - CORE_PEER_LISTENADDRESS=0.0.0.0:10051
+            - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.kpu.itb.ac.id:9051 # Menunjuk ke peer0
+            - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1.kpu.itb.ac.id:10051
+            - CORE_PEER_LOCALMSPID=KPUMSP
+            - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+            - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+            - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+        volumes:
+            - /var/run/docker.sock:/host/var/run/docker.sock
+            - ../organizations/peerOrganizations/kpu.itb.ac.id/peers/peer1.kpu.itb.ac.id/msp:/etc/hyperledger/fabric/msp
+            - ../organizations/peerOrganizations/kpu.itb.ac.id/peers/peer1.kpu.itb.ac.id/tls:/etc/hyperledger/fabric/tls
+            - peer1.kpu.itb.ac.id:/var/hyperledger/production
+        ports:
+            - 10051:10051
         networks:
             - voting-network
 

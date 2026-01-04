@@ -135,7 +135,7 @@ Channel: &ChannelDefaults
         <<: *ChannelCapabilities
 
 Profiles:
-    VotingOrdererGenesis:
+    VotingChannel:
         <<: *ChannelDefaults
         Orderer:
             <<: *OrdererDefaults
@@ -143,15 +143,6 @@ Profiles:
                 - *OrdererOrg
             Capabilities:
                 <<: *OrdererCapabilities
-        Consortiums:
-            VotingConsortium:
-                Organizations:
-                    - *ITB
-                    - *KPU
-
-    VotingChannel:
-        Consortium: VotingConsortium
-        <<: *ChannelDefaults
         Application:
             <<: *ApplicationDefaults
             Organizations:
