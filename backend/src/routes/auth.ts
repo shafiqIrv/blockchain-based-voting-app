@@ -87,39 +87,17 @@ authRoutes.get("/callback", async (c) => {
  * GET /api/auth/me
  * Get current authenticated user info
  */
-authRoutes.get("/me", async (c) => {
-	const authHeader = c.req.header("Authorization");
-
-	if (!authHeader || !authHeader.startsWith("Bearer ")) {
-		return c.json({ error: "Unauthorized" }, 401);
-	}
-
-	try {
-		const token = authHeader.substring(7);
-		const jwtModule = await import("jsonwebtoken");
-		const decoded = jwtModule.default.verify(
-			token,
-			process.env.JWT_SECRET || "default-secret"
-		) as {
-			email: string;
-			name: string;
-			tokenIdentifier: string;
-			electionId: string;
-			major?: string;
-			role: "admin" | "voter";
-		};
-
-		return c.json({
-			email: decoded.email,
-			name: decoded.name,
-			tokenIdentifier: decoded.tokenIdentifier,
-			electionId: decoded.electionId,
-			major: decoded.major,
-			role: decoded.role,
-		});
-	} catch (err) {
-		return c.json({ error: "Invalid token" }, 401);
-	}
+authRoutes.get("/me", authMiddleware, async (c) => {
+	const user = getUser(c);
+	return c.json({
+		email: user.email,
+		name: user.name,
+		tokenIdentifier: user.tokenIdentifier,
+		electionId: user.electionId,
+		// @ts-ignore - 'major' might be missing from type but present in token
+		major: user['major'],
+		role: user.role
+	});
 });
 
 /**

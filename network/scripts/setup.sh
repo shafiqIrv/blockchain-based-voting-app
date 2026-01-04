@@ -24,7 +24,8 @@ echo -e "${NC}"
 # Check prerequisites
 echo -e "${YELLOW}Checking prerequisites...${NC}"
 command -v docker >/dev/null 2>&1 || { echo -e "${RED}Docker is required but not installed.${NC}" >&2; exit 1; }
-command -v docker-compose >/dev/null 2>&1 || { echo -e "${RED}Docker Compose is required but not installed.${NC}" >&2; exit 1; }
+# Check for compose plugin instead of legacy binary
+docker compose version >/dev/null 2>&1 || { echo -e "${RED}Docker Compose (v2) is required but not installed.${NC}" >&2; exit 1; }
 
 # Ensure Fabric binaries are in PATH
 export PATH=$PATH:$PROJECT_DIR/bin
@@ -55,8 +56,15 @@ echo -e "${GREEN}✓ votingchannel.block generated${NC}"
 # Step 4: Start Network
 echo -e "\n${YELLOW}Step 4: Starting Docker containers...${NC}"
 cd "$NETWORK_DIR/docker"
-docker-compose up -d
+docker compose up -d
 echo -e "${GREEN}✓ Containers started${NC}"
+
+# Step 4.1: Generate Connection Profile
+echo -e "\n${YELLOW}Step 4.1: Generating connection profile...${NC}"
+chmod +x "$SCRIPT_DIR/ccp-generate.sh"
+"$SCRIPT_DIR/ccp-generate.sh"
+echo -e "${GREEN}✓ connection.json generated${NC}"
+
 echo "Waiting for containers to be ready..."
 sleep 5
 

@@ -16,3 +16,12 @@ coverage/
 *.sqlite3
 oracle/data/
 backend/data/
+
+# Hyperledger Fabric
+network/organizations/
+network/channel-artifacts/
+network/connection.json
+network/scripts/ccp-template.json
+backend/wallet/
+wallet/
+

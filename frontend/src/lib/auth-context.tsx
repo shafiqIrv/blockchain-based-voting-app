@@ -51,7 +51,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	}, []);
 
 	const checkAuth = async () => {
+		console.log("AuthContext: Starting checkAuth...");
 		const token = api.getToken();
+		console.log("AuthContext: Token from storage:", token ? "FOUND (" + token.substring(0, 10) + "...)" : "MISSING");
 
 		// Load voting identity from localStorage
 		const storedTokenId = localStorage.getItem("voting_tokenId");
@@ -59,7 +61,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 		if (token) {
 			try {
+				console.log("AuthContext: Verifying token with backend...");
 				const userData = await api.getMe();
+				console.log("AuthContext: User verified:", userData.email);
 				setUser(userData);
 
 				if (storedTokenId && storedSignature) {
@@ -67,11 +71,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 					setSignature(storedSignature);
 				}
 				// If missing token, let the useEffect below handle redirect
-			} catch (error) {
-				console.error("Auth Check Failed", error);
-				api.clearToken();
+			} catch (error: any) {
+				console.warn("AuthContext: Auth Check Failed", error);
+				// Only logout if it is definitely an authentication error
+				if (error.message && (error.message.includes("Unauthorized") || error.message.includes("Invalid token") || error.message.includes("jwt"))) {
+					console.warn("AuthContext: Critical Auth Error -> LOGOUT");
+					logout();
+				}
+				// Otherwise (e.g. Network Error), keep the token but User state remains null (loading/error state)
 			}
+		} else {
+			console.log("AuthContext: No token found. User is guest.");
+			// No token exists, ensure state is clear
+			setUser(null);
 		}
+
 		setIsLoading(false);
 	};
 

@@ -124,11 +124,28 @@ export default function AdminPage() {
             const data = await api.getCurrentElection();
             setElection(data);
 
+            if (!data.startTime || !data.endTime) {
+                // Determine if this is a "valid" empty state or a bug
+                // Since this page is for Admin config, if dates are missing, we should probably treat it as not configured.
+                console.warn("Election data missing dates - defaulting to current time for form.");
+                setStartToNow();
+                setEndToNow();
+                return;
+            }
+
             // Convert UTC to "Local ISO" for datetime-local input
             // 1. Get Date object (which works in local time)
             // 2. Adjust it by subtracting timezone offset so .toISOString() returns local time values
             const startD = new Date(data.startTime);
             const endD = new Date(data.endTime);
+
+            // Guard against Invalid Date
+            if (isNaN(startD.getTime()) || isNaN(endD.getTime())) {
+                console.error("Invalid date format from backend", data.startTime, data.endTime);
+                setStartToNow();
+                setEndToNow();
+                return;
+            }
 
             const startLocal = new Date(startD.getTime() - (startD.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
             const endLocal = new Date(endD.getTime() - (endD.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
@@ -137,8 +154,14 @@ export default function AdminPage() {
             setEndDate(endLocal);
 
             loadVoters(data.id);
-        } catch (e) {
-            console.error("Failed to load election");
+        } catch (e: any) {
+            // Ignore 404 (No Election) - this is expected on fresh install
+            if (e.message && e.message.includes("No active election found")) {
+                console.warn("No active election found - Initialization required.");
+                setElection(null);
+            } else {
+                console.error("Failed to load election", e);
+            }
         }
     };
 
@@ -261,7 +284,70 @@ export default function AdminPage() {
                     </div>
                 </div>
 
-                {activeTab === "config" ? (
+                {/* Create Election Form if No Election Found */}
+                {!election && !isLoading && (
+                    <div className="glass p-8 rounded-2xl border border-white/10 bg-white/5 animate-fadeIn">
+                        <div className="text-center mb-6">
+                            <div className="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center mx-auto mb-4">
+                                <span className="text-3xl">🚀</span>
+                            </div>
+                            <h2 className="text-xl font-semibold text-white">Inisialisasi Pemilihan Baru</h2>
+                            <p className="text-gray-400 text-sm mt-2">
+                                Belum ada pemilihan aktif di blockchain. Konfigurasikan pemilihan baru.
+                            </p>
+                        </div>
+
+                        <form onSubmit={async (e) => {
+                            e.preventDefault();
+                            setIsSubmitting(true);
+                            setError("");
+                            try {
+                                const form = e.target as any;
+                                await api.createElection({
+                                    id: "election-2024", // Default ID
+                                    name: form.name.value,
+                                    startTime: new Date(form.startDate.value).toISOString(),
+                                    endTime: new Date(form.endDate.value).toISOString(),
+                                    candidates: []
+                                });
+                                setSuccess("Pemilihan berhasil dibuat!");
+                                setTimeout(() => window.location.reload(), 1500);
+                            } catch (err: any) {
+                                setError(err.message || "Gagal membuat pemilihan");
+                            } finally {
+                                setIsSubmitting(false);
+                            }
+                        }} className="space-y-6 max-w-lg mx-auto">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-2">Nama Pemilihan</label>
+                                <input name="name" type="text" required className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white" defaultValue="Pemira KM ITB 2026" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">Waktu Mulai</label>
+                                    <input name="startDate" type="datetime-local" required className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">Waktu Selesai</label>
+                                    <input name="endDate" type="datetime-local" required className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white" />
+                                </div>
+                            </div>
+
+                            {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+                            {success && <p className="text-green-400 text-sm text-center">{success}</p>}
+
+                            <button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className="w-full btn btn-primary py-3 rounded-xl"
+                            >
+                                {isSubmitting ? "Memproses..." : "Buat Pemilihan"}
+                            </button>
+                        </form>
+                    </div>
+                )}
+
+                {activeTab === "config" && election ? (
                     <div className="glass p-8 rounded-2xl border border-white/10 bg-white/5 animate-fadeIn">
                         <h2 className="text-xl font-semibold text-white mb-6">Konfigurasi Pemilihan</h2>
 
@@ -286,16 +372,55 @@ export default function AdminPage() {
                                         <p className="text-xs text-gray-500 mb-1">Jadwal Terdaftar:</p>
                                         <div className="flex justify-between text-sm">
                                             <span className="text-gray-300">
-                                                Mulai: <span className="text-white">{new Date(election.startTime).toLocaleString('id-ID')}</span>
+                                                Mulai: <span className="text-white">
+                                                    {!isNaN(new Date(election.startTime).getTime())
+                                                        ? new Date(election.startTime).toLocaleString('id-ID')
+                                                        : "-"}
+                                                </span>
                                             </span>
                                             <span className="text-gray-300">
-                                                Selesai: <span className="text-white">{new Date(election.endTime).toLocaleString('id-ID')}</span>
+                                                Selesai: <span className="text-white">
+                                                    {!isNaN(new Date(election.endTime).getTime())
+                                                        ? new Date(election.endTime).toLocaleString('id-ID')
+                                                        : "-"}
+                                                </span>
                                             </span>
                                         </div>
                                     </div>
                                 </div>
 
-                                <form onSubmit={handleSubmit} className="space-y-6 border-t border-white/10 pt-6">
+                                <form onSubmit={async (e) => {
+                                    e.preventDefault();
+                                    if (!election) return;
+
+                                    setIsSubmitting(true);
+                                    setError("");
+                                    setSuccess("");
+
+                                    try {
+                                        await api.updateElectionDates(election.id, startDate, endDate);
+                                        setSuccess("Jadwal pemilihan berhasil diperbarui! Halaman akan dimuat ulang...");
+
+                                        // Artificial delay for better UX
+                                        await new Promise(resolve => setTimeout(resolve, 1000));
+
+                                        window.location.reload();
+                                    } catch (err: any) {
+                                        if (err.message && (err.message.includes("Invalid token") || err.message.includes("Unauthorized"))) {
+                                            setError("Session Expired. Please logout and login again.");
+                                            // Optional: Force logout logic here if accessible, or just let user do it.
+                                            // Since we can't easily access 'logout' from here without prop drilling or context usage changes (we have `logout` from useAuth, let's use it!)
+                                            // Wait, useAuth gives 'logout'.
+                                            // But we are inside a form handler.
+                                            alert("Sesi Anda telah berakhir. Harap login kembali.");
+                                            window.location.href = "/"; // Force redirect to login/home
+                                        } else {
+                                            setError(err.message || "Failed to update election");
+                                        }
+                                    } finally {
+                                        setIsSubmitting(false);
+                                    }
+                                }} className="space-y-6 border-t border-white/10 pt-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div>
                                             <div className="flex justify-between items-center mb-2">
@@ -656,6 +781,6 @@ export default function AdminPage() {
 
                 ) : null}
             </div>
-        </main>
+        </main >
     );
 }

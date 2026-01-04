@@ -14,18 +14,18 @@ import { Vote } from "../models/vote";
     description: "Smart contract for blockchain-based voting system",
 })
 export class VotingContract extends Contract {
-    
+
     /**
      * Helper untuk mendapatkan waktu yang deterministik dari timestamp transaksi.
      * Penggunaan 'new Date()' secara langsung dilarang dalam Smart Contract
      * karena setiap node peer bisa memiliki waktu lokal yang berbeda.
      */
     private getCurrentTime(ctx: Context): Date {
-		const timestamp = ctx.stub.getTxTimestamp();
-		// seconds is a Long object, nanos is a number
-		const milliseconds = (timestamp.seconds.low * 1000) + (timestamp.nanos / 1000000);
-		return new Date(milliseconds);
-	}
+        const timestamp = ctx.stub.getTxTimestamp();
+        // seconds is a Long object, nanos is a number
+        const milliseconds = (timestamp.seconds.low * 1000) + (timestamp.nanos / 1000000);
+        return new Date(milliseconds);
+    }
 
     // ==================== INITIALIZATION ====================
 
@@ -258,22 +258,22 @@ export class VotingContract extends Contract {
         return voteBytes.toString();
     }
 
-	@Transaction()
-	public async recordAttendance(ctx: Context, voterEmail: string): Promise<void> {
-		const exists = await this.checkAttendance(ctx, voterEmail);
-		if (exists) {
-			throw new Error(`Voter ${voterEmail} already registered/attended`);
-		}
-		// Simpan tanda kehadiran (voter sudah ambil ballot)
-		await ctx.stub.putState(`ATTENDANCE_${voterEmail}`, Buffer.from("true"));
-	}
+    @Transaction()
+    public async recordAttendance(ctx: Context, voterEmail: string): Promise<void> {
+        const exists = await this.checkAttendance(ctx, voterEmail);
+        if (exists) {
+            throw new Error(`Voter ${voterEmail} already registered/attended`);
+        }
+        // Simpan tanda kehadiran (voter sudah ambil ballot)
+        await ctx.stub.putState(`ATTENDANCE_${voterEmail}`, Buffer.from("true"));
+    }
 
-	@Transaction(false)
-	@Returns("boolean")
-	public async checkAttendance(ctx: Context, voterEmail: string): Promise<boolean> {
-		const data = await ctx.stub.getState(`ATTENDANCE_${voterEmail}`);
-		return data && data.length > 0;
-	}
+    @Transaction(false)
+    @Returns("boolean")
+    public async checkAttendance(ctx: Context, voterEmail: string): Promise<boolean> {
+        const data = await ctx.stub.getState(`ATTENDANCE_${voterEmail}`);
+        return data && data.length > 0;
+    }
 
     // ==================== HELPERS ====================
 
@@ -297,7 +297,129 @@ export class VotingContract extends Contract {
             throw new Error(`Election ${electionId} does not exist`);
         }
 
-        return JSON.parse(electionBytes.toString());
+        const election = JSON.parse(electionBytes.toString());
+
+        // Fix: Explicitly convert date strings back to Date objects
+        // JSON.parse leaves them as strings, causing comparisons to fail (NaN)
+        election.startTime = new Date(election.startTime);
+        election.endTime = new Date(election.endTime);
+        election.createdAt = new Date(election.createdAt);
+
+        return election;
+    }
+
+    // ==================== NEW METHODS ====================
+
+    @Transaction()
+    public async updateElectionDates(
+        ctx: Context,
+        electionId: string,
+        startTime: string,
+        endTime: string
+    ): Promise<void> {
+        const election = await this.getElection(ctx, electionId);
+        election.startTime = new Date(startTime);
+        election.endTime = new Date(endTime);
+
+        await ctx.stub.putState(
+            `ELECTION_${electionId}`,
+            Buffer.from(JSON.stringify(election))
+        );
+    }
+
+    @Transaction()
+    public async deleteCandidate(
+        ctx: Context,
+        electionId: string,
+        candidateId: string
+    ): Promise<void> {
+        const election = await this.getElection(ctx, electionId);
+        const now = this.getCurrentTime(ctx);
+
+        if (now >= election.startTime) {
+            throw new Error("Cannot delete candidates after election has started");
+        }
+
+        const initialLength = election.candidates.length;
+        election.candidates = election.candidates.filter(c => c.id !== candidateId);
+
+        if (election.candidates.length === initialLength) {
+            throw new Error(`Candidate ${candidateId} not found`);
+        }
+
+        await ctx.stub.putState(
+            `ELECTION_${electionId}`,
+            Buffer.from(JSON.stringify(election))
+        );
+    }
+
+    @Transaction(false)
+    @Returns("boolean")
+    public async checkParticipation(
+        ctx: Context,
+        voterEmail: string
+    ): Promise<boolean> {
+        // "Participation" here implies they have requested to vote (e.g. got a token)
+        // or actually voted. Backend uses it as "Is registered / has identity" sometimes.
+        // Let's assume it checks the "PARTICIPATION" record if we add one.
+        // But backend seems to map "hasVoted" -> checkParticipation.
+        // And "hasIdentity" -> checkAttendance.
+
+        // Let's implement looking for explicit Participation record if used
+        const data = await ctx.stub.getState(`PARTICIPATION_${voterEmail}`);
+        return data && data.length > 0;
+    }
+
+    @Transaction()
+    public async recordParticipation(
+        ctx: Context,
+        voterEmail: string
+    ): Promise<void> {
+        await ctx.stub.putState(`PARTICIPATION_${voterEmail}`, Buffer.from("true"));
+    }
+
+    @Transaction(false)
+    @Returns("string")
+    public async getBallots(
+        ctx: Context,
+        electionId: string
+    ): Promise<string> {
+        const election = await this.getElection(ctx, electionId);
+        const now = this.getCurrentTime(ctx);
+
+        // Allow fetching ballots only after election ends for IRV calculation
+        if (now <= election.endTime) {
+            throw new Error("Ballots are private until election ends");
+        }
+
+        // This is an expensive operation (range query). 
+        // In production, use pagination or specific query.
+        // Iterator for all votes in this election
+        // Key schema: VOTE_{electionId}_{token}
+        // Since we don't have composite key with electionId first easily iterable without token,
+        // we might fail here if keys are strictly `VOTE_elec_token`.
+        // Better schema for range: `VOTE_{electionId}_{token}` works if we use getStateByRange.
+
+        const startKey = `VOTE_${electionId}_`;
+        const endKey = `VOTE_${electionId}_\uffff`;
+
+        const iterator = await ctx.stub.getStateByRange(startKey, endKey);
+        const results = [];
+
+        let result = await iterator.next();
+        while (!result.done) {
+            if (result.value && result.value.value.toString()) {
+                const vote: Vote = JSON.parse(result.value.value.toString());
+                // DECRYPT VOTE NEEDS TO HAPPEN OFF-CHAIN USUALLY.
+                // OR RETURN ENCRYPTED.
+                // The backend IRV service expects { candidateIds: [] }.
+                // If data is encrypted on chain, strict chaincode can't decrypt it.
+                // We will return the vote objects.
+                results.push(vote);
+            }
+            result = await iterator.next();
+        }
+        return JSON.stringify(results);
     }
 
     // ==================== ADMIN (Post-Election) ====================

@@ -27,19 +27,19 @@ function networkUp() {
     echo -e "${GREEN}Starting Hyperledger Fabric network...${NC}"
     
     cd "$NETWORK_DIR/docker"
-    docker-compose up -d
+    docker compose up -d
     
     echo -e "${GREEN}Network started successfully!${NC}"
     echo ""
     echo "Services running:"
-    docker-compose ps
+    docker compose ps
 }
 
 function networkDown() {
     echo -e "${YELLOW}Stopping Hyperledger Fabric network...${NC}"
     
     cd "$NETWORK_DIR/docker"
-    docker-compose down -v
+    docker compose down -v
     
     # Clean up chaincode containers
     docker rm -f $(docker ps -aq --filter "name=dev-peer") 2>/dev/null || true
@@ -51,7 +51,7 @@ function networkDown() {
 function networkStatus() {
     echo -e "${GREEN}Network Status:${NC}"
     cd "$NETWORK_DIR/docker"
-    docker-compose ps
+    docker compose ps
 }
 
 # Parse command

@@ -236,6 +236,13 @@ class ApiClient {
 		});
 	}
 
+	createElection(data: any): Promise<{ success: boolean; message: string }> {
+		return this.fetch("/api/election", {
+			method: "POST",
+			body: JSON.stringify(data),
+		});
+	}
+
 	getVoters(electionId: string): Promise<Voter[]> {
 		return this.fetch(`/api/election/${electionId}/voters`);
 	}

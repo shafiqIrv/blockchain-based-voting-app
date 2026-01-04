@@ -147,7 +147,7 @@ app.post("/auth/login", async (c) => {
 
 		// GENERATE JWT Compatible with Backend
 		const secret = new TextEncoder().encode(
-			process.env.JWT_SECRET || "default-secret"
+			"vote-secure-2024-fixed-secret"
 		);
 
 		const electionId = process.env.CURRENT_ELECTION_ID || "election-2024";

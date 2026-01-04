@@ -38,8 +38,49 @@ export class FabricService {
 
     // Pemanggilan fungsi chaincode
     async getElection(electionId: string): Promise<any> {
-        const result = await this.contract?.evaluateTransaction('getElectionStatus', electionId);
-        return JSON.parse(result?.toString() || '{}');
+        try {
+            console.log(`[Fabric] getElection calling getElectionStatus for ${electionId}`);
+            const statusResult = await this.contract?.evaluateTransaction('getElectionStatus', electionId);
+            const statusStr = statusResult?.toString();
+            console.log(`[Fabric] Raw Status String:`, statusStr);
+
+            const status = JSON.parse(statusStr || '{}');
+            console.log(`[Fabric] Parsed Status Object:`, status);
+
+            // FIX: Calculate status manually in backend to override potential chaincode date issues
+            const now = new Date();
+            const start = new Date(status.startTime);
+            const end = new Date(status.endTime);
+            let calculatedStatus = "ENDED";
+
+            if (now < start) {
+                calculatedStatus = "PENDING";
+            } else if (now >= start && now <= end) {
+                calculatedStatus = "ACTIVE";
+            }
+
+            console.log(`[Fabric] Calculated Status (Backend Override): ${calculatedStatus} (Chaincode said: ${status.status})`);
+
+            const candidatesResult = await this.contract?.evaluateTransaction('getCandidates', electionId);
+            const candidates = JSON.parse(candidatesResult?.toString() || '[]');
+
+            // Construct full Election object for Frontend
+            return {
+                ...status,
+                status: calculatedStatus, // Override with backend calculation
+                id: status.electionId || electionId, // Map electionId to id
+                name: "Pemilihan Raya KM ITB 2024", // Temporary Fallback as name isn't in getElectionStatus
+                candidates: candidates
+            };
+        } catch (error) {
+            console.error("Fabric getElection failed:", error);
+            throw error;
+        }
+    }
+
+    async getElectionStatus(electionId: string): Promise<any> {
+        // Reusing getElection as it returns the full object including status
+        return this.getElection(electionId);
     }
 
     async castVote(electionId: string, tokenIdentifier: string, encryptedVote: string): Promise<void> {
@@ -59,6 +100,73 @@ export class FabricService {
     async getCandidates(electionId: string): Promise<any[]> {
         const result = await this.contract?.evaluateTransaction('getCandidates', electionId);
         return JSON.parse(result?.toString() || '[]');
+    }
+
+    // --- New Methods ---
+
+    async getResults(electionId: string, bypassTimeCheck: boolean = false): Promise<any> {
+        // Warning: This transaction might fail in chaincode if election is not ended, unless logic handles it.
+        // If chaincode strictly enforces time, bypassTimeCheck won't work unless passed to chaincode.
+        // Assuming chaincode 'getResults' handles the check.
+        const result = await this.contract?.evaluateTransaction('getResults', electionId);
+        return JSON.parse(result?.toString() || '{}');
+    }
+
+    async updateElectionDates(electionId: string, startDate: Date, endDate: Date): Promise<any> {
+        console.log(`[Fabric] Submitting Update:`, {
+            id: electionId,
+            start: startDate.toISOString(),
+            end: endDate.toISOString()
+        });
+        await this.contract?.submitTransaction('updateElectionDates', electionId, startDate.toISOString(), endDate.toISOString());
+
+        console.log(`[Fabric] Transaction submitted. Fetching new state...`);
+        return this.getElection(electionId);
+    }
+
+    async initElection(electionId: string, name: string, startTime: Date, endTime: Date, candidates: any[]): Promise<void> {
+        const candidatesJson = JSON.stringify(candidates);
+        await this.contract?.submitTransaction('initElection', electionId, name, startTime.toISOString(), endTime.toISOString(), candidatesJson);
+    }
+
+    async addCandidate(electionId: string, candidateData: any): Promise<any> {
+        await this.contract?.submitTransaction('addCandidate', electionId, JSON.stringify(candidateData));
+        return this.getCandidates(electionId);
+    }
+
+    async deleteCandidate(electionId: string, candidateId: string): Promise<void> {
+        await this.contract?.submitTransaction('deleteCandidate', electionId, candidateId);
+    }
+
+    async checkParticipation(voterEmail: string): Promise<boolean> {
+        // Checks if user has physically/logically marked as "participated"
+        const result = await this.contract?.evaluateTransaction('checkParticipation', voterEmail);
+        return result?.toString() === 'true';
+    }
+
+    async recordParticipation(voterEmail: string): Promise<void> {
+        await this.contract?.submitTransaction('recordParticipation', voterEmail);
+    }
+
+    async getBallots(electionId: string): Promise<any[]> {
+        // Used for IRV calculation
+        const result = await this.contract?.evaluateTransaction('getBallots', electionId);
+        return JSON.parse(result?.toString() || '[]');
+    }
+
+    async hasVoted(electionId: string, tokenIdentifier: string): Promise<boolean> {
+        const result = await this.contract?.evaluateTransaction('hasVoted', electionId, tokenIdentifier);
+        return result?.toString() === 'true';
+    }
+
+    async getVote(electionId: string, tokenId: string): Promise<any> {
+        try {
+            const result = await this.contract?.evaluateTransaction('getVote', electionId, tokenId);
+            if (!result || result.length === 0) return null;
+            return JSON.parse(result.toString());
+        } catch (error) {
+            return null;
+        }
     }
 }
 

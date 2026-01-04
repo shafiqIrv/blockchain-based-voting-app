@@ -27,13 +27,13 @@ export async function authMiddleware(c: Context, next: Next) {
 	try {
 		const decoded = jwt.verify(
 			token,
-			process.env.JWT_SECRET || "default-secret"
+			"vote-secure-2024-fixed-secret"
 		) as AuthUser;
 
 		c.set("user", decoded);
 		await next();
-	} catch (error) {
-		return c.json({ error: "Unauthorized: Invalid token" }, 401);
+	} catch (error: any) {
+		return c.json({ error: "Unauthorized: " + error.message }, 401);
 	}
 }
 

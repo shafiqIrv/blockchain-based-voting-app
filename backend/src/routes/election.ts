@@ -124,6 +124,9 @@ electionRoutes.post("/:id/dates", authMiddleware, async (c) => {
 		const body = await c.req.json();
 		const { startDate, endDate } = body;
 
+		console.log(`[UpdateDates] Request for ${electionId}`);
+		console.log(`[UpdateDates] Payload:`, { startDate, endDate });
+
 		if (!startDate || !endDate) {
 			return c.json({ error: "Start date and end date are required" }, 400);
 		}
@@ -133,6 +136,11 @@ electionRoutes.post("/:id/dates", authMiddleware, async (c) => {
 			new Date(startDate),
 			new Date(endDate)
 		);
+
+		console.log(`[UpdateDates] New Election State:`, {
+			start: updatedElection.startTime,
+			end: updatedElection.endTime
+		});
 
 		return c.json(updatedElection);
 	} catch (error: any) {
@@ -304,13 +312,42 @@ electionRoutes.get("/:id/stats", async (c) => {
 	}
 });
 
+// Create Election Endpoint
+electionRoutes.post("/", authMiddleware, async (c) => {
+	try {
+		const user = getUser(c);
+		if (user.role !== "admin") {
+			return c.json({ error: "Forbidden: Admin access required" }, 403);
+		}
+
+		const body = await c.req.json();
+		const { id, name, startTime, endTime, candidates } = body;
+
+		if (!id || !name || !startTime || !endTime || !candidates) {
+			return c.json({ error: "Missing required fields" }, 400);
+		}
+
+		await fabricService.initElection(
+			id,
+			name,
+			new Date(startTime),
+			new Date(endTime),
+			candidates
+		);
+
+		return c.json({ success: true, message: "Election created successfully" });
+	} catch (error: any) {
+		console.error("Create election error:", error);
+		return c.json({ error: error.message }, 500);
+	}
+});
+
 // IRV Result Endpoint
 electionRoutes.get("/:id/irv", async (c) => {
 	try {
 		const electionId = c.req.param("id");
 
 		// 1. Auth Check (Admin or Election Ended)
-		// For simplicity in this demo, we check if election is ended OR explicit admin token
 		const authHeader = c.req.header("Authorization");
 		let isAdmin = false;
 
@@ -321,7 +358,7 @@ electionRoutes.get("/:id/irv", async (c) => {
 				const decoded = jwt.default.verify(token, process.env.JWT_SECRET || "default-secret") as any;
 				if (decoded.role === "admin") isAdmin = true;
 			} catch (e) {
-				// Ignore invalid token, just treat as non-admin
+				// Ignore invalid token
 			}
 		}
 
@@ -331,12 +368,30 @@ electionRoutes.get("/:id/irv", async (c) => {
 		}
 
 		// 2. Calculate IRV
-		const ballots = await fabricService.getBallots(electionId);
+		const rawBallots = await fabricService.getBallots(electionId);
+
+		// Decrypt ballots
+		const decryptedBallots: string[][] = [];
+		for (const ballot of rawBallots) {
+			try {
+				// Vote is encrypted as base64(JSON)
+				// Format: { candidateIds: string[], ... }
+				const jsonStr = atob(ballot.encryptedVote);
+				const voteData = JSON.parse(jsonStr);
+
+				if (Array.isArray(voteData.candidateIds)) {
+					decryptedBallots.push(voteData.candidateIds);
+				}
+			} catch (e) {
+				console.warn("Failed to decrypt ballot:", ballot.tokenIdentifier);
+			}
+		}
+
 		// Map candidate IDs from election data
-		const candidateIds = election.candidates.map(c => c.id);
+		const candidateIds = election.candidates.map((c: any) => c.id);
 
 		const { calculateIRV } = await import("../services/irv");
-		const irvResult = calculateIRV(ballots, candidateIds);
+		const irvResult = calculateIRV(decryptedBallots, candidateIds);
 
 		return c.json(irvResult);
 
