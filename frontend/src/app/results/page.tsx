@@ -470,7 +470,7 @@ function IRVSection({ results, irvData }: { results: ElectionResults | null, irv
 	if (!irvData) return null;
 
 	return (
-		<div className="space-y-8 animate-fadeIn stagger-5">
+		<div className="space-y-8 pb-6 animate-fadeIn stagger-5">
 			<hr className="border-gray-800" />
 			<div className="group">
 				<h2 className="text-2xl font-bold text-center text-white mb-2 flex items-center justify-center gap-2">
@@ -525,18 +525,7 @@ function IRVSection({ results, irvData }: { results: ElectionResults | null, irv
 						</div>
 					</div>
 				))}
-				{irvData.winnerId && (
-					<div className="glass p-8 bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-500/30 text-center animate-pulse-slow">
-						<span className="text-6xl mb-4 block">🎉</span>
-						<h3 className="text-xl font-bold text-white mb-2">Pemenang Terpilih</h3>
-						<p className="text-3xl text-green-400 font-bold mb-2">
-							{results?.candidates.find(c => c.id === irvData.winnerId)?.name}
-						</p>
-						<p className="text-sm text-green-200/70">
-							Memperoleh &gt;50% suara setelah {irvData.rounds.length} putaran
-						</p>
-					</div>
-				)}
+				
 			</div>
 		</div>
 	);
