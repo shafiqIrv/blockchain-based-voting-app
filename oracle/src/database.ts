@@ -57,6 +57,34 @@ export class SQLiteDatabase {
         } catch (error) {
             // Ignore error if column already exists
         }
+
+        this.seedAdmin();
+    }
+
+    private seedAdmin() {
+        const adminUser = {
+            nim: "00000000",
+            name: "System Administrator",
+            email: "admin@itb.ac.id",
+            password: "admin", // In production, hash this!
+            faculty: "STEI",
+            major: "Teknik Informatika",
+            campus: "Ganesha",
+            entry_year: 2020,
+            status: "active",
+            role: "admin"
+        };
+
+        try {
+            const check = db.prepare("SELECT nim FROM users WHERE nim = ?").get(adminUser.nim);
+            if (!check) {
+                console.log("[Database] Seeding default admin account...");
+                this.createUser(adminUser as any);
+                console.log("[Database] Admin account '00000000' created.");
+            }
+        } catch (error) {
+            console.error("[Database] Failed to seed admin:", error);
+        }
     }
 
     createUser(user: Omit<User, "status" | "role">): { success: boolean; error?: string } {
