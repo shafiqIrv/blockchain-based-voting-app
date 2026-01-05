@@ -1,0 +1,36 @@
+{
+    "name": "voting-network-org1",
+    "version": "1.0.0",
+    "client": {
+        "organization": "ITB",
+        "connection": {
+            "timeout": {
+                "peer": {
+                    "endorser": "300"
+                }
+            }
+        }
+    },
+    "organizations": {
+        "ITB": {
+            "mspid": "ITBMSP",
+            "peers": [
+                "peer0.itb.ac.id"
+            ],
+            "certificateAuthorities": []
+        }
+    },
+    "peers": {
+        "peer0.itb.ac.id": {
+            "url": "grpcs://localhost:7051",
+            "tlsCACerts": {
+                "pem": "${PEERPEM}"
+            },
+            "grpcOptions": {
+                "ssl-target-name-override": "peer0.itb.ac.id",
+                "hostnameOverride": "peer0.itb.ac.id"
+            }
+        }
+    },
+    "certificateAuthorities": {}
+}

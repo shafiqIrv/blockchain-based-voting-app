@@ -22,7 +22,7 @@ backend/public/uploads/
 network/organizations/
 network/channel-artifacts/
 network/connection.json
-network/scripts/ccp-template.json
+
 backend/wallet/
 wallet/
 
