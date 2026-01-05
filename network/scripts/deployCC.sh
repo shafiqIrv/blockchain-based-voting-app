@@ -16,6 +16,8 @@ GREEN='\033[0;32m'
 NC='\033[0m'
 
 echo -e "${YELLOW}Step 6.1: Packaging chaincode...${NC}"
+# Prevent Windows lockfile from contaminating Linux build
+rm -f ../chaincode/package-lock.json
 docker exec cli peer lifecycle chaincode package ${CC_NAME}.tar.gz --path ${CC_SRC_PATH} --lang node --label ${CC_NAME}_${CC_VERSION}
 
 echo -e "${YELLOW}Step 6.2: Installing on ITB peers...${NC}"

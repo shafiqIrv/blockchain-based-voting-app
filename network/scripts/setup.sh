@@ -40,7 +40,8 @@ cd "$NETWORK_DIR"
 docker volume prune -f >/dev/null 2>&1 || true
 sudo rm -rf organizations/ordererOrganizations organizations/peerOrganizations
 sudo rm -rf channel-artifacts/*.block channel-artifacts/*.tx
-echo -e "${GREEN}✓ Network cleaned${NC}"
+sudo rm -rf ../oracle/data
+echo -e "${GREEN}✓ Network and Oracle data cleaned${NC}"
 
 # Step 2: Generate Crypto Materials
 echo -e "\n${YELLOW}Step 2: Generating crypto materials...${NC}"

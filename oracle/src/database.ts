@@ -59,15 +59,6 @@ export class SQLiteDatabase {
             // Ignore error if column already exists
         }
 
-        try {
-            const salt = bcrypt.genSaltSync(10);
-            const hashedPassword = bcrypt.hashSync("admin", salt);
-            const stmt = db.prepare("UPDATE users SET role = 'admin', password = ? WHERE nim = '00000000'");
-            stmt.run(hashedPassword);
-        } catch (error) {
-            console.error("[Database] Failed to repair admin:", error);
-        }
-
         this.seedAdmin();
     }
 
