@@ -79,6 +79,11 @@ echo -e "\n${YELLOW}Step 6: Automating chaincode deployment...${NC}"
 chmod +x "$SCRIPT_DIR/deployCC.sh"
 "$SCRIPT_DIR/deployCC.sh"
 
+# Step 7: Initialize Ledger
+echo -e "\n${YELLOW}Step 7: Initializing ledger data...${NC}"
+chmod +x "$SCRIPT_DIR/initLedger.sh"
+"$SCRIPT_DIR/initLedger.sh"
+
 echo -e "\n${GREEN}"
 echo "╔════════════════════════════════════════════════════════════╗"
 echo "║           Setup Complete! All systems are ready            ║"

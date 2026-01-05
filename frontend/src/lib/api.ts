@@ -115,8 +115,22 @@ class ApiClient {
 	}
 
 	// Auth
-	getLoginUrl(): Promise<{ loginUrl: string }> {
-		return this.fetch("/api/auth/login-url");
+	async login(credentials: any): Promise<any> {
+		return this.fetch("/api/auth/login", {
+			method: "POST",
+			body: JSON.stringify(credentials),
+		});
+	}
+
+	async register(data: any): Promise<any> {
+		return this.fetch("/api/auth/register", {
+			method: "POST",
+			body: JSON.stringify(data),
+		});
+	}
+
+	async getFaculties(): Promise<any[]> {
+		return this.fetch("/api/auth/faculties");
 	}
 
 	getMe(): Promise<User> {

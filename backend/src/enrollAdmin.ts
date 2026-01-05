@@ -1,50 +1,56 @@
-import { Wallets } from 'fabric-network';
+import FabricCAServices from 'fabric-ca-client';
+import { Wallets, X509Identity } from 'fabric-network';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function main() {
     try {
-        const walletPath = path.resolve(process.env.FABRIC_WALLET_PATH || './wallet');
+        // Paths
+        const walletPath = path.join(process.cwd(), 'wallet');
+        const org1Path = path.resolve(__dirname, '../../network/organizations/peerOrganizations/itb.ac.id');
+        const certPath = path.join(org1Path, 'users/Admin@itb.ac.id/msp/signcerts/Admin@itb.ac.id-cert.pem');
+        const keyPath = path.join(org1Path, 'users/Admin@itb.ac.id/msp/keystore');
+
+        // Check if crypto material exists
+        if (!fs.existsSync(certPath)) {
+            throw new Error(`Certificate not found at: ${certPath}`);
+        }
+
+        // Find the Private Key (filename is random hash)
+        const keyFiles = fs.readdirSync(keyPath);
+        const keyFile = keyFiles.find(f => f.endsWith('_sk'));
+        if (!keyFile) {
+            throw new Error(`Private key not found in: ${keyPath}`);
+        }
+        const privateKeyPath = path.join(keyPath, keyFile);
+
+        // Read files
+        const certificate = fs.readFileSync(certPath).toString();
+        const privateKey = fs.readFileSync(privateKeyPath).toString();
+
+        // Create Wallet
         const wallet = await Wallets.newFileSystemWallet(walletPath);
 
-        // Check if we already enrolled
-        const identity = await wallet.get('admin');
-        if (identity) {
-            console.log('An identity for the admin user "admin" already exists in the wallet');
-            return;
-        }
-
-        // Path to crypto materials (Admin of ITB)
-        const credPath = path.resolve(process.env.FABRIC_CRED_PATH || '../network/organizations/peerOrganizations/itb.ac.id/users/Admin@itb.ac.id/msp');
-
-        if (!fs.existsSync(credPath)) {
-            throw new Error(`Credential path not found: ${credPath}. Make sure the network is started.`);
-        }
-
-        const certPath = path.join(credPath, 'signcerts', 'Admin@itb.ac.id-cert.pem');
-
-        // Key path is variable (sk file)
-        const keyDir = path.join(credPath, 'keystore');
-        const keyFiles = fs.readdirSync(keyDir);
-        const keyPath = path.join(keyDir, keyFiles[0]);
-
-        const certificate = fs.readFileSync(certPath).toString();
-        const privateKey = fs.readFileSync(keyPath).toString();
-
-        const mspId = process.env.FABRIC_MSP_ID || 'ITBMSP';
-        const x509Identity = {
+        // Identity
+        const identity: X509Identity = {
             credentials: {
-                certificate: certificate,
-                privateKey: privateKey,
+                certificate,
+                privateKey
             },
-            mspId: mspId,
-            type: 'X.509',
+            mspId: 'ITBMSP', // Matched from ccp-template.json
+            type: 'X.509'
         };
 
-        await wallet.put('admin', x509Identity);
-        console.log('Successfully enrolled admin user "admin" and imported it into the wallet');
+        // Import into wallet
+        await wallet.put('admin', identity);
+        console.log('Successfully imported "admin" identity into the wallet');
+
     } catch (error) {
-        console.error('Failed to enroll admin:', error);
+        console.error(`Failed to enroll admin: ${error}`);
         process.exit(1);
     }
 }

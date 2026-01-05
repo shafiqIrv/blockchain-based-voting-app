@@ -1,85 +1,67 @@
 import { Hono } from "hono";
-import { microsoftOAuth } from "../services/microsoft";
-import { tokenService } from "../services/token";
+import { fabricService } from "../services/fabric";
+import { blindSignatureService } from "../services/blind-signature";
+import { getUser, authMiddleware } from "../middleware/auth";
 
 const authRoutes = new Hono();
 
-/**
- * GET /api/auth/login
- * Redirect to Microsoft OAuth login
- */
-authRoutes.get("/login", (c) => {
-	const state = Math.random().toString(36).substring(2);
-	const loginUrl = microsoftOAuth.getLoginUrl(state);
-	return c.redirect(loginUrl);
-});
+// Proxy Configuration
+const ORACLE_URL = process.env.ORACLE_URL || "http://localhost:3002";
 
 /**
- * GET /api/auth/login-url
- * Get the Microsoft OAuth login URL (for frontend redirect)
+ * POST /api/auth/login
+ * Proxy to Oracle Login
  */
-authRoutes.get("/login-url", (c) => {
-	const loginUrl = microsoftOAuth.getLoginUrl();
-	return c.json({ loginUrl });
-});
-
-/**
- * GET /api/auth/callback
- * Handle Microsoft OAuth callback
- */
-authRoutes.get("/callback", async (c) => {
-	const code = c.req.query("code");
-	const error = c.req.query("error");
-	const errorDescription = c.req.query("error_description");
-
-	if (error) {
-		console.error("OAuth error:", error, errorDescription);
-		const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-		return c.redirect(
-			`${frontendUrl}/login?error=${encodeURIComponent(error)}`
-		);
-	}
-
-	if (!code) {
-		return c.json({ error: "No authorization code provided" }, 400);
-	}
-
+authRoutes.post("/login", async (c) => {
 	try {
-		// Exchange code for tokens
-		const tokens = await microsoftOAuth.exchangeCodeForTokens(code);
+		const body = await c.req.json();
+		const response = await fetch(`${ORACLE_URL}/auth/login`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(body),
+		});
 
-		// Get user info from Microsoft Graph
-		const userInfo = await microsoftOAuth.getUserInfo(tokens.access_token);
-		const email = microsoftOAuth.getEmail(userInfo);
+		const data = await response.json();
+		return c.json(data, response.status as any);
+	} catch (error: any) {
+		console.error("Login proxy error:", error);
+		return c.json({ error: "Login service unavailable" }, 503);
+	}
+});
 
-		// Validate ITB student email
-		if (!microsoftOAuth.isValidITBStudent(email)) {
-			const frontendUrl =
-				process.env.FRONTEND_URL || "http://localhost:3000";
-			return c.redirect(
-				`${frontendUrl}/login?error=invalid_domain&message=${encodeURIComponent(
-					"Hanya mahasiswa ITB (@mahasiswa.itb.ac.id) yang dapat mengakses sistem voting"
-				)}`
-			);
-		}
+/**
+ * POST /api/auth/register
+ * Proxy to Oracle Register
+ */
+authRoutes.post("/register", async (c) => {
+	try {
+		const body = await c.req.json();
+		const response = await fetch(`${ORACLE_URL}/auth/register`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(body),
+		});
 
-		// Generate voting tokens
-		const electionId = process.env.CURRENT_ELECTION_ID || "election-2024";
-		const votingTokens = tokenService.generateVotingTokens(
-			email,
-			userInfo.displayName,
-			electionId
-		);
+		const data = await response.json();
+		return c.json(data, response.status as any);
+	} catch (error: any) {
+		console.error("Register proxy error:", error);
+		return c.json({ error: "Registration service unavailable" }, 503);
+	}
+});
 
-		// Redirect to frontend with JWT
-		const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-		return c.redirect(
-			`${frontendUrl}/auth/callback?token=${votingTokens.jwt}&tokenId=${votingTokens.tokenIdentifier}`
-		);
-	} catch (err) {
-		console.error("Auth callback error:", err);
-		const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-		return c.redirect(`${frontendUrl}/login?error=auth_failed`);
+/**
+ * GET /api/auth/faculties
+ * Proxy to Oracle Faculties
+ */
+authRoutes.get("/faculties", async (c) => {
+	try {
+		const response = await fetch(`${ORACLE_URL}/auth/faculties`);
+		const data = await response.json();
+		return c.json(data, response.status as any);
+	} catch (error: any) {
+		console.error("Faculties proxy error:", error);
+		return c.json({ error: "Service unavailable" }, 503);
 	}
 });
 
@@ -109,10 +91,6 @@ authRoutes.get("/me", authMiddleware, async (c) => {
  * 3. Server signs it and returns signature
  * 4. Server marks user as "registered" so they can't get another signature
  */
-import { fabricService } from "../services/fabric";
-import { blindSignatureService } from "../services/blind-signature";
-import { getUser, authMiddleware } from "../middleware/auth";
-
 // Temporary in-memory store is replaced by fabricService.attendance
 // const registeredUsers = new Set<string>();
 

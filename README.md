@@ -80,7 +80,7 @@ cd network
 cd ..
 ```
 
-> **Note**: This process may take a few minutes. If it fails, ensure Docker is running and try again.
+**Note**: This process may take a few minutes. If it fails, ensure Docker is running and try again.
 
 ### 5. Running the Application
 
@@ -111,7 +111,16 @@ If you encounter blockchain errors or want to start fresh:
 ```bash
 cd network
 ./scripts/network.sh down
+./scripts/network.sh down
 ./scripts/setup.sh
+```
+
+### Manual Setup Steps (if not using setup.sh)
+If you configure the network manually, you **must** enroll the backend admin identity before the API will work:
+
+```bash
+cd backend
+npx tsx src/enrollAdmin.ts
 ```
 
 ### Common Issues

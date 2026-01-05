@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
 export default function LoginPage() {
@@ -42,19 +43,7 @@ export default function LoginPage() {
 		setError(null);
 
 		try {
-			const res = await fetch("http://localhost:3002/auth/login", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({ nim, password }),
-			});
-
-			const data = await res.json();
-
-			if (!res.ok) {
-				throw new Error(data.error || "Login failed");
-			}
+			const data = await api.login({ nim, password });
 
 			// Success: Set auth data (token and tokenId)
 			// This triggers the auth context to fetch user profile from backend

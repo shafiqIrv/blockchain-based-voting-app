@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { api } from "@/lib/api";
 
 interface Major {
     name: string;
@@ -33,9 +34,8 @@ export default function RegisterPage() {
 
     useEffect(() => {
         // Fetch faculties on mount
-        fetch("http://localhost:3002/auth/faculties")
-            .then((res) => res.json())
-            .then((data) => setFaculties(data))
+        api.getFaculties()
+            .then((data) => setFaculties(data as any))
             .catch((err) => console.error("Failed to fetch faculties", err));
     }, []);
 
@@ -50,28 +50,16 @@ export default function RegisterPage() {
         setError(null);
 
         try {
-            const res = await fetch("http://localhost:3002/auth/register", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    name,
-                    nim,
-                    email,
-                    password,
-                    faculty: selectedFaculty,
-                    major: selectedMajor,
-                    campus,
-                    entry_year: entryYear,
-                }),
+            await api.register({
+                name,
+                nim,
+                email,
+                password,
+                faculty: selectedFaculty,
+                major: selectedMajor,
+                campus,
+                entry_year: entryYear,
             });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.error || "Registration failed");
-            }
 
             // Redirect to login on success
             router.push("/login?message=Registration%20successful.%20Please%20login.");
