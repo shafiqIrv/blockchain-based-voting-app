@@ -115,12 +115,14 @@ cd network
 ./scripts/setup.sh
 ```
 
+The setup script now automatically handles application credentials (admin enrollment), so you don't need to run manual enrollment steps after a reset.
+
 ### Manual Setup Steps (if not using setup.sh)
 If you configure the network manually, you **must** enroll the backend admin identity before the API will work:
 
 ```bash
 cd backend
-npx tsx src/enrollAdmin.ts
+pnpm run setup
 ```
 
 ### Common Issues

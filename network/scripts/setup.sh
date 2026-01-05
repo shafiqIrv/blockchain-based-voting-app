@@ -86,6 +86,17 @@ chmod +x "$SCRIPT_DIR/initLedger.sh"
 
 echo -e "\n${GREEN}"
 echo "╔════════════════════════════════════════════════════════════╗"
+echo "╚════════════════════════════════════════════════════════════╝"
+echo -e "${NC}"
+
+# Step 8: Setup Application Credentials
+echo -e "\n${YELLOW}Step 8: Setup Application Credentials...${NC}"
+cd "$PROJECT_DIR"
+pnpm --filter backend setup
+echo -e "${GREEN}✓ Application credentials setup complete${NC}"
+
+echo -e "\n${GREEN}"
+echo "╔════════════════════════════════════════════════════════════╗"
 echo "║           Setup Complete! All systems are ready            ║"
 echo "╚════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
