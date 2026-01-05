@@ -81,25 +81,13 @@ chmod +x "$SCRIPT_DIR/deployCC.sh"
 
 # Step 7: Initialize Ledger
 echo -e "\n${YELLOW}Step 7: Initializing ledger data...${NC}"
-chmod +x "$SCRIPT_DIR/initLedger.sh"
-"$SCRIPT_DIR/initLedger.sh"
 
 # Step 8: Enroll Backend Admin
 echo -e "\n${YELLOW}Step 8: Enrolling backend admin identity...${NC}"
 cd "$PROJECT_DIR/backend"
+rm -rf wallet
 npx tsx src/enrollAdmin.ts
 cd "$NETWORK_DIR"
-
-echo -e "\n${GREEN}"
-echo "╔════════════════════════════════════════════════════════════╗"
-echo "╚════════════════════════════════════════════════════════════╝"
-echo -e "${NC}"
-
-# Step 8: Setup Application Credentials
-echo -e "\n${YELLOW}Step 8: Setup Application Credentials...${NC}"
-cd "$PROJECT_DIR"
-pnpm --filter backend setup
-echo -e "${GREEN}✓ Application credentials setup complete${NC}"
 
 echo -e "\n${GREEN}"
 echo "╔════════════════════════════════════════════════════════════╗"
