@@ -1,46 +1,123 @@
-# Voting Blockchain
+# GaneshaVote: ITB Blockchain Voting System
 
-Aplikasi voting berbasis blockchain untuk pemilihan mahasiswa ITB menggunakan Hyperledger Fabric.
+A blockchain-based voting application for ITB student elections (Pemira) using Hyperledger Fabric and SSO Integration.
 
 ## Tech Stack
 
--   **Frontend**: Next.js (TypeScript)
+-   **Frontend**: Next.js 14 (TypeScript)
 -   **Backend API**: Hono.js (TypeScript)
--   **Blockchain**: Hyperledger Fabric
+-   **Blockchain**: Hyperledger Fabric v2.5
 -   **Smart Contract**: TypeScript Chaincode
+-   **Identity**: SSO ITB Integration (Oracle Service)
 
 ## Project Structure
 
 ```
 voting-blockchain/
-├── frontend/          # Next.js application
-├── backend/           # Hono.js API server
+├── frontend/          # Next.js application (Port: 3000)
+├── backend/           # Hono.js API server (Port: 8000)
 ├── chaincode/         # Hyperledger Fabric smart contract
 ├── oracle/            # SSO ITB integration service
 ├── shared/            # Shared TypeScript types
-└── network/           # Fabric network configuration
+├── network/           # Fabric network configuration & scripts
+└── bin/               # Hyperledger Fabric binaries
 ```
 
 ## Getting Started
 
-### Prerequisites
+### 1. Prerequisites
 
--   Node.js >= 18.0.0
--   pnpm >= 9.0.0
--   Docker & Docker Compose (for Fabric network)
+Ensure you have the following installed:
 
-### Installation
+-   **Node.js** >= 18.0.0
+-   **pnpm** >= 9.0.0
+-   **Docker** & **Docker Compose** (V2)
+-   **Go** >= 1.21 (required for chaincode lifecycle)
+-   **Git**
+
+### 2. Installation
+
+1.  **Install Application Dependencies**
+
+    ```bash
+    pnpm install
+    ```
+
+2.  **Install Hyperledger Fabric Binaries**
+    This script downloads Fabric binaries (peer, orderer, configtxgen, etc.) to the `bin/` directory.
+
+    ```bash
+    # Downloads Fabric v2.5.14 and CA v1.5.15 binaries & docker images
+    ./install-fabric.sh binary docker
+    ```
+
+### 3. Environment Setup
+
+Configure environment variables for each service.
+
+**Backend**
+```bash
+cp backend/.env.example backend/.env
+# Edit backend/.env to match your configuration
+```
+
+**Frontend**
+```bash
+cp frontend/env.example frontend/.env
+# Edit frontend/.env to match your configuration
+```
+
+**Oracle Service**
+Ensure you have a `.env` file in `oracle/` with necessary SSO configuration.
+
+### 4. Blockchain Network Setup
+
+We provide an automated setup script to clean, generate crypto, create channel, and deploy chaincode.
 
 ```bash
-# Install dependencies
-pnpm install
+cd network
+./scripts/setup.sh
+cd ..
+```
 
-# Run frontend development server
-pnpm dev:frontend
+> **Note**: This process may take a few minutes. If it fails, ensure Docker is running and try again.
 
-# Run backend development server
+### 5. Running the Application
+
+Open separate terminals for each service:
+
+**Terminal 1: Backend API**
+```bash
 pnpm dev:backend
 ```
+
+**Terminal 2: Frontend**
+```bash
+pnpm dev:frontend
+```
+
+**Terminal 3: Oracle Service**
+```bash
+pnpm --filter oracle dev
+```
+
+The application should now be accessible at `http://localhost:3000`.
+
+## Troubleshooting
+
+### Reset Network
+If you encounter blockchain errors or want to start fresh:
+
+```bash
+cd network
+./scripts/network.sh down
+./scripts/setup.sh
+```
+
+### Common Issues
+-   **"Binaries not found"**: Ensure you ran `./install-fabric.sh` and that `bin/` exists in the root.
+-   **Docker permission errors**: Ensure your user is in the `docker` group (Linux) or Docker Desktop is running (Windows/Mac).
+-   **Chaincode install failed**: Check if you have Go installed, as it's required to package the chaincode.
 
 ## Documentation
 
