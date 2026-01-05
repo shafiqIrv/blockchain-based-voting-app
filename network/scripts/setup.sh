@@ -62,7 +62,8 @@ echo -e "${GREEN}✓ Containers started${NC}"
 # Step 4.1: Generate Connection Profile
 echo -e "\n${YELLOW}Step 4.1: Generating connection profile...${NC}"
 chmod +x "$SCRIPT_DIR/ccp-generate.sh"
-"$SCRIPT_DIR/ccp-generate.sh"
+# Use Node.js script for Windows compatibility (awk/sed replacement)
+node "$SCRIPT_DIR/ccp-generate.js"
 echo -e "${GREEN}✓ connection.json generated${NC}"
 
 echo "Waiting for containers to be ready..."
