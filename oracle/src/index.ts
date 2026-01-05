@@ -184,6 +184,7 @@ app.post("/auth/login", async (c) => {
 				electionId: electionId,
 				nim: userInfo.nim,
 				faculty: userInfo.faculty,
+				major: userInfo.major, // Include Major!
 				role: userInfo.role
 			}
 		});
@@ -195,7 +196,7 @@ app.post("/auth/login", async (c) => {
 
 // Internal endpoint to get all users (protected)
 // Used by Backend to generate "Who Voted" report for Admin
-app.get("/internal/users", (c) => {
+app.get("/internal/users", async (c) => {
 	const secret = c.req.header("x-internal-secret");
 	// Simple protection for demo - in prod use mTLS or signed JWT
 	if (secret !== (process.env.INTERNAL_SECRET || "internal-secret")) {

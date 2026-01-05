@@ -35,9 +35,28 @@ function networkUp() {
     docker compose ps
 }
 
+function stopDevServers() {
+    echo -e "${YELLOW}Stopping dev servers (Oracle, Backend, Frontend)...${NC}"
+    
+    # 1. Windows: Force kill all Node.exe processes
+    # This stops the servers holding file locks on database.sqlite
+    MSYS_NO_PATHCONV=1 taskkill //F //IM node.exe //T 2>/dev/null || true
+
+    # 2. Linux/Mac Fallback (if running in WSL/Unix)
+    if command -v pkill >/dev/null 2>&1; then
+        pkill -f "next-server" 2>/dev/null || true
+        pkill -f "ts-node" 2>/dev/null || true
+        pkill -f "node" 2>/dev/null || true
+    fi
+
+    echo -e "${GREEN}Dev servers stopped.${NC}"
+}
+
 function networkDown() {
     echo -e "${YELLOW}Stopping Hyperledger Fabric network...${NC}"
     
+    stopDevServers
+
     cd "$NETWORK_DIR/docker"
     docker compose down -v
     

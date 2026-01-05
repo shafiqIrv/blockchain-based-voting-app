@@ -407,53 +407,68 @@ function AnalyticsSection({ results }: { results: ElectionResults | null }) {
 						<span>📊</span> Pilihan Mayoritas
 					</h3>
 
-					{/* Dropdown */}
-					<div className="mb-6">
-						<label className="text-sm text-gray-400 mb-2 block">Pilih Jurusan</label>
-						<select
-							value={selectedMajor || ""}
-							onChange={(e) => setSelectedMajor(e.target.value)}
-							className="w-full bg-[#1a1a20] border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
-						>
-							{majors.map(m => (
-								<option key={m} value={m}>{m} ({MAJOR_TO_PREFIX[m] || "?"})</option>
-							))}
-						</select>
-					</div>
-
-					{/* Candidate List for Selected Major */}
-					{selectedMajor && totalMajorVotes > 0 ? (
-						<div className="space-y-4">
-							{sortedCandidates?.map((candidate, idx) => {
-								const pct = totalMajorVotes > 0 ? (candidate.majorVoteCount / totalMajorVotes) * 100 : 0;
-								return (
-									<div key={candidate.id} className="relative">
-										<div className="flex items-center gap-3 mb-1">
-											<div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx === 0 ? 'bg-yellow-500 text-black' : 'bg-gray-700 text-white'}`}>
-												{idx + 1}
-											</div>
-											<div className="flex-1">
-												<span className="text-sm font-medium text-gray-200">{candidate.name}</span>
-											</div>
-											<div className="text-right">
-												<span className="text-sm font-bold text-white">{pct.toFixed(1)}%</span>
-											</div>
-										</div>
-										<div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-											<div
-												className={`h-full rounded-full ${idx === 0 ? 'bg-yellow-500' : 'bg-gray-600'}`}
-												style={{ width: `${pct}%` }}
-											/>
-										</div>
-										<p className="text-xs text-gray-500 mt-1 text-right">{candidate.majorVoteCount} suara</p>
-									</div>
-								);
-							})}
+					{!results ? (
+						<div className="text-center py-12 text-gray-500">
+							<div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center mx-auto mb-4">
+								<span className="text-2xl">🔒</span>
+							</div>
+							<p>Data preferensi belum tersedia</p>
+							<p className="text-xs mt-2 text-gray-600">
+								Hasil akan muncul setelah periode voting berakhir
+							</p>
 						</div>
 					) : (
-						<div className="text-center py-10 text-gray-500">
-							<p>Pilih jurusan untuk melihat preferensi</p>
-						</div>
+						<>
+							{/* Dropdown */}
+							<div className="mb-6">
+								<label className="text-sm text-gray-400 mb-2 block">Pilih Jurusan</label>
+								<select
+									value={selectedMajor || ""}
+									onChange={(e) => setSelectedMajor(e.target.value)}
+									className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
+								>
+									{majors.length === 0 && <option value="" className="bg-gray-900 text-white">Tidak ada data</option>}
+									{majors.map(m => (
+										<option key={m} value={m} className="bg-gray-900 text-white">{m} ({MAJOR_TO_PREFIX[m] || "?"})</option>
+									))}
+								</select>
+							</div>
+
+							{/* Candidate List for Selected Major */}
+							{selectedMajor && totalMajorVotes > 0 ? (
+								<div className="space-y-4">
+									{sortedCandidates?.map((candidate, idx) => {
+										const pct = totalMajorVotes > 0 ? (candidate.majorVoteCount / totalMajorVotes) * 100 : 0;
+										return (
+											<div key={candidate.id} className="relative">
+												<div className="flex items-center gap-3 mb-1">
+													<div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx === 0 ? 'bg-yellow-500 text-black' : 'bg-gray-700 text-white'}`}>
+														{idx + 1}
+													</div>
+													<div className="flex-1">
+														<span className="text-sm font-medium text-gray-200">{candidate.name}</span>
+													</div>
+													<div className="text-right">
+														<span className="text-sm font-bold text-white">{pct.toFixed(1)}%</span>
+													</div>
+												</div>
+												<div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+													<div
+														className={`h-full rounded-full ${idx === 0 ? 'bg-yellow-500' : 'bg-gray-600'}`}
+														style={{ width: `${pct}%` }}
+													/>
+												</div>
+												<p className="text-xs text-gray-500 mt-1 text-right">{candidate.majorVoteCount} suara</p>
+											</div>
+										);
+									})}
+								</div>
+							) : (
+								<div className="text-center py-10 text-gray-500">
+									<p>Pilih jurusan untuk melihat preferensi</p>
+								</div>
+							)}
+						</>
 					)}
 				</div>
 			</div>

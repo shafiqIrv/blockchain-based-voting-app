@@ -55,7 +55,7 @@ electionRoutes.get("/:id/candidates", async (c) => {
 	}
 });
 
-/**
+/*
  * GET /api/election/:id/results
  * Get election results (only after election ends)
  */
@@ -79,9 +79,50 @@ electionRoutes.get("/:id/results", async (c) => {
 			}
 		}
 
-		const results = await fabricService.getResults(electionId, bypassTimeCheck);
+		// 1. Get Basic Results from Chaincode
+		const results = await fabricService.getResults(electionId);
+
+		// 2. Calculate Votes By Major (Enrichment)
+		try {
+			// B. Fetch Ballots from Chaincode
+			const rawBallots = await fabricService.getBallots(electionId);
+
+			// C. Aggregate Votes
+			const votesByMajor: Record<string, Record<string, number>> = {};
+
+			for (const ballot of rawBallots) {
+				try {
+					// Decrypt: base64 -> JSON
+					const jsonStr = Buffer.from(ballot.encryptedVote, 'base64').toString();
+					const voteData = JSON.parse(jsonStr);
+					const candidateIds = voteData.candidateIds;
+
+					if (Array.isArray(candidateIds) && candidateIds.length > 0) {
+						const firstChoiceId = candidateIds[0];
+
+						const major = voteData.major || "Unknown";
+
+						if (!votesByMajor[major]) {
+							votesByMajor[major] = {};
+						}
+						if (!votesByMajor[major][firstChoiceId]) {
+							votesByMajor[major][firstChoiceId] = 0;
+						}
+						votesByMajor[major][firstChoiceId]++;
+					}
+				} catch (e) {
+					// Skip malformed/failed decryption
+				}
+			}
+
+			results.votesByMajor = votesByMajor;
+
+		} catch (calcError) {
+			console.error("Failed to calculate votesByMajor:", calcError);
+		}
 
 		return c.json(results);
+
 	} catch (error: any) {
 		console.error("Get results error:", error);
 
@@ -286,11 +327,16 @@ electionRoutes.get("/:id/stats", async (c) => {
 
 		const users = await response.json() as any[];
 
-		// 2. Aggregate Stats per Major
+		// 2. Aggregate Stats per Major (excluding admins)
 		const statsByMajor: Record<string, { total: number; voted: number }> = {};
 
 		// Parallelize checks for performance
 		await Promise.all(users.map(async (u) => {
+			// Skip admins to separate them from voter stats
+			if (u.role === 'admin' || (u.major && u.major.toLowerCase() === 'administrator')) {
+				return;
+			}
+
 			const major = u.major || "Unknown";
 			const hasParticipated = await fabricService.checkParticipation(u.email);
 

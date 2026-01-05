@@ -67,11 +67,11 @@ export class SQLiteDatabase {
             nim: "00000000",
             name: "System Administrator",
             email: "admin@itb.ac.id",
-            password: "admin", // Passed as plain text, hashed by createUser
-            faculty: "STEI",
-            major: "Teknik Informatika",
-            campus: "Ganesha",
-            entry_year: 2020,
+            password: "admin",
+            faculty: "System",
+            major: "Administrator",
+            campus: "N/A",
+            entry_year: 0,
             status: "active",
             role: "admin"
         };

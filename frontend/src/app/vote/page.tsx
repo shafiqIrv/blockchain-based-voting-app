@@ -95,7 +95,9 @@ export default function VotePage() {
 				throw new Error("Token pemilihan tidak ditemukan. Silakan login ulang.");
 			}
 
-			const result = await api.submitVote(rankedCandidateIds, tokenId, signature, user?.major);
+			const major = user?.major || "Unknown";
+
+			const result = await api.submitVote(rankedCandidateIds, tokenId, signature, major);
 
 			// Confirm participation to mark "Sudah Vote" for the authenticated user
 			// This is separate from the anonymous vote itself.
