@@ -84,6 +84,12 @@ echo -e "\n${YELLOW}Step 7: Initializing ledger data...${NC}"
 chmod +x "$SCRIPT_DIR/initLedger.sh"
 "$SCRIPT_DIR/initLedger.sh"
 
+# Step 8: Enroll Backend Admin
+echo -e "\n${YELLOW}Step 8: Enrolling backend admin identity...${NC}"
+cd "$PROJECT_DIR/backend"
+npx tsx src/enrollAdmin.ts
+cd "$NETWORK_DIR"
+
 echo -e "\n${GREEN}"
 echo "╔════════════════════════════════════════════════════════════╗"
 echo "║           Setup Complete! All systems are ready            ║"
