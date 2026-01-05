@@ -24,11 +24,15 @@ export default function LoginPage() {
 
 		if (errorParam) {
 			setError(message || "Terjadi kesalahan. Silakan coba lagi.");
+			// Clean URL
+			router.replace("/login", { scroll: false });
 		} else if (message) {
 			// Support showing success messages passed via URL
 			setSuccess(message);
+			// Clean URL so message doesn't persist on refresh or subsequent logins
+			router.replace("/login", { scroll: false });
 		}
-	}, [searchParams]);
+	}, [searchParams, router]);
 
 	useEffect(() => {
 		// Redirect if already authenticated
@@ -41,6 +45,7 @@ export default function LoginPage() {
 		e.preventDefault();
 		setIsSubmitting(true);
 		setError(null);
+		setSuccess(null); // Clear any previous success message
 
 		try {
 			const data = await api.login({ nim, password });

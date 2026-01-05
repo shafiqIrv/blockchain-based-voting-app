@@ -178,13 +178,13 @@ export default function RegisterPage() {
                             </label>
                             <select
                                 required
-                                className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                                className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
                                 value={selectedFaculty}
                                 onChange={handleFacultyChange}
                             >
-                                <option value="">Select Faculty</option>
+                                <option value="" className="bg-gray-900 text-white">Select Faculty</option>
                                 {faculties.map((f) => (
-                                    <option key={f.name} value={f.name}>
+                                    <option key={f.name} value={f.name} className="bg-gray-900 text-white">
                                         {f.name}
                                     </option>
                                 ))}
@@ -199,13 +199,13 @@ export default function RegisterPage() {
                             <select
                                 required
                                 disabled={!selectedFaculty}
-                                className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition disabled:opacity-50"
+                                className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition disabled:opacity-50"
                                 value={selectedMajor}
                                 onChange={(e) => setSelectedMajor(e.target.value)}
                             >
-                                <option value="">Select Major</option>
+                                <option value="" className="bg-gray-900 text-white">Select Major</option>
                                 {currentMajors.map((m) => (
-                                    <option key={m.name} value={m.name}>
+                                    <option key={m.name} value={m.name} className="bg-gray-900 text-white">
                                         {m.name} ({m.nimPrefix})
                                     </option>
                                 ))}
@@ -219,13 +219,13 @@ export default function RegisterPage() {
                             </label>
                             <select
                                 required
-                                className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                                className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
                                 value={campus}
                                 onChange={(e) => setCampus(e.target.value)}
                             >
-                                <option value="Ganesha">Ganesha</option>
-                                <option value="Jatinangor">Jatinangor</option>
-                                <option value="Cirebon">Cirebon</option>
+                                <option value="Ganesha" className="bg-gray-900 text-white">Ganesha</option>
+                                <option value="Jatinangor" className="bg-gray-900 text-white">Jatinangor</option>
+                                <option value="Cirebon" className="bg-gray-900 text-white">Cirebon</option>
                             </select>
                         </div>
                     </div>
