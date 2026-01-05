@@ -327,12 +327,20 @@ electionRoutes.post("/", authMiddleware, async (c) => {
 			return c.json({ error: "Missing required fields" }, 400);
 		}
 
+
+		// Generate IDs for candidates if missing
+		const { v4: uuidv4 } = await import("uuid");
+		const candidatesWithIds = candidates.map((c: any) => ({
+			...c,
+			id: c.id || uuidv4()
+		}));
+
 		await fabricService.initElection(
 			id,
 			name,
 			new Date(startTime),
 			new Date(endTime),
-			candidates
+			candidatesWithIds
 		);
 
 		return c.json({ success: true, message: "Election created successfully" });

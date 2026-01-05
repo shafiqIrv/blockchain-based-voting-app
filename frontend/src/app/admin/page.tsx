@@ -298,53 +298,10 @@ export default function AdminPage() {
                             </p>
                         </div>
 
-                        <form onSubmit={async (e) => {
-                            e.preventDefault();
-                            setIsSubmitting(true);
-                            setError("");
-                            try {
-                                const form = e.target as any;
-                                await api.createElection({
-                                    id: "election-2024", // Default ID
-                                    name: form.name.value,
-                                    startTime: new Date(form.startDate.value).toISOString(),
-                                    endTime: new Date(form.endDate.value).toISOString(),
-                                    candidates: []
-                                });
-                                setSuccess("Pemilihan berhasil dibuat!");
-                                setTimeout(() => window.location.reload(), 1500);
-                            } catch (err: any) {
-                                setError(err.message || "Gagal membuat pemilihan");
-                            } finally {
-                                setIsSubmitting(false);
-                            }
-                        }} className="space-y-6 max-w-lg mx-auto">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">Nama Pemilihan</label>
-                                <input name="name" type="text" required className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white" defaultValue="Pemira KM ITB 2026" />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">Waktu Mulai</label>
-                                    <input name="startDate" type="datetime-local" required className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">Waktu Selesai</label>
-                                    <input name="endDate" type="datetime-local" required className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white" />
-                                </div>
-                            </div>
-
-                            {error && <p className="text-red-400 text-sm text-center">{error}</p>}
-                            {success && <p className="text-green-400 text-sm text-center">{success}</p>}
-
-                            <button
-                                type="submit"
-                                disabled={isSubmitting}
-                                className="w-full btn btn-primary py-3 rounded-xl"
-                            >
-                                {isSubmitting ? "Memproses..." : "Buat Pemilihan"}
-                            </button>
-                        </form>
+                        <InitElectionForm onSuccess={() => {
+                            setSuccess("Pemilihan berhasil dibuat!");
+                            setTimeout(() => window.location.reload(), 1500);
+                        }} />
                     </div>
                 )}
 
@@ -829,5 +786,158 @@ export default function AdminPage() {
                 ) : null}
             </div>
         </main >
+    );
+}
+
+// Sub-component for Initialization Form to keep main component clean
+function InitElectionForm({ onSuccess }: { onSuccess: () => void }) {
+    const [name, setName] = useState("Pemira KM ITB 2026");
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
+    const [initCandidates, setInitCandidates] = useState<{ id: string, name: string, vision: string, imageUrl: string }[]>([]);
+
+    // Mini-form state for adding candidate
+    const [candName, setCandName] = useState("");
+    const [candVision, setCandVision] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState("");
+
+    const addCandidate = () => {
+        if (!candName || !candVision) return;
+        setInitCandidates([...initCandidates, {
+            id: Math.random().toString(36).substr(2, 9), // Temp ID for UI
+            name: candName,
+            vision: candVision,
+            imageUrl: ""
+        }]);
+        setCandName("");
+        setCandVision("");
+    };
+
+    const removeCandidate = (id: string) => {
+        setInitCandidates(initCandidates.filter(c => c.id !== id));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError("");
+
+        if (initCandidates.length < 2) {
+            setError("Minimal harus ada 2 kandidat untuk memulai pemilihan.");
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            await api.createElection({
+                id: "election-2024",
+                name,
+                startTime: new Date(startDate).toISOString(),
+                endTime: new Date(endDate).toISOString(),
+                candidates: initCandidates.map(({ name, vision, imageUrl }) => ({ name, vision, imageUrl, id: "" }))
+            });
+            onSuccess();
+        } catch (err: any) {
+            setError(err.message || "Gagal membuat pemilihan");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl mx-auto">
+            <div className="grid grid-cols-1 gap-6">
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Nama Pemilihan</label>
+                    <input
+                        type="text"
+                        required
+                        className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white"
+                        value={name}
+                        onChange={e => setName(e.target.value)}
+                    />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Waktu Mulai</label>
+                        <input
+                            type="datetime-local"
+                            required
+                            className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white"
+                            value={startDate}
+                            onChange={e => setStartDate(e.target.value)}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Waktu Selesai</label>
+                        <input
+                            type="datetime-local"
+                            required
+                            className="w-full px-4 py-3 bg-black/20 border border-gray-700 rounded-xl text-white"
+                            value={endDate}
+                            onChange={e => setEndDate(e.target.value)}
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <div className="border-t border-white/10 pt-6">
+                <h3 className="text-white font-medium mb-4">Tambahkan Kandidat (Min. 2)</h3>
+
+                <div className="flex gap-4 mb-4">
+                    <input
+                        placeholder="Nama Kandidat"
+                        className="flex-1 px-4 py-2 bg-black/20 border border-gray-700 rounded-lg text-white text-sm"
+                        value={candName}
+                        onChange={e => setCandName(e.target.value)}
+                    />
+                    <input
+                        placeholder="Visi Singkat"
+                        className="flex-[2] px-4 py-2 bg-black/20 border border-gray-700 rounded-lg text-white text-sm"
+                        value={candVision}
+                        onChange={e => setCandVision(e.target.value)}
+                    />
+                    <button
+                        type="button"
+                        onClick={addCandidate}
+                        disabled={!candName || !candVision}
+                        className="px-4 py-2 bg-indigo-600 rounded-lg text-white text-sm font-medium disabled:opacity-50 hover:bg-indigo-700 transition"
+                    >
+                        + Tambah
+                    </button>
+                </div>
+
+                <div className="space-y-2">
+                    {initCandidates.map(c => (
+                        <div key={c.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/5">
+                            <div>
+                                <div className="text-white font-medium text-sm">{c.name}</div>
+                                <div className="text-gray-400 text-xs">{c.vision}</div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => removeCandidate(c.id)}
+                                className="text-red-400 hover:text-red-300 text-sm"
+                            >
+                                Hapus
+                            </button>
+                        </div>
+                    ))}
+                    {initCandidates.length === 0 && (
+                        <p className="text-gray-500 text-sm text-center py-2 italic">Belum ada kandidat ditambahkan</p>
+                    )}
+                </div>
+            </div>
+
+            {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+
+            <button
+                type="submit"
+                disabled={isSubmitting || initCandidates.length < 2}
+                className="w-full btn btn-primary py-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                {isSubmitting ? "Memproses..." : "Buat Pemilihan & Simpan ke Blockchain"}
+            </button>
+        </form>
     );
 }
