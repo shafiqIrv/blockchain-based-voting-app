@@ -49,24 +49,19 @@ export default function ResultsPage() {
 				}
 
 			} catch (e: any) {
-				// Allow admin to bypass UI check, but if API fails, still show partial or handle it.
-				// However, the API logic for admin now returns results even if not ended.
-				// So if I am admin, getResults should SUCCEED.
-				// If I am NOT admin, it throws "not ended".
+				// Normalize error message
+				const msg = e.message || "";
 
-				if (status.status !== "ENDED" && user?.role !== 'admin') {
-					// Expected - election not ended and not admin
+				// Check if it's the specific "not available" error
+				if (msg.includes("not available")) {
+					// This is expected when election is active (even for admins if backend enforces it)
+					setError(null);
+				} else if (status.status !== "ENDED" && user?.role !== 'admin') {
+					// Standard voter logic: expect failure if not ended
 					setError(null);
 				} else {
-					// Actual error or Admin failed to fetch
-					if (e.message && e.message.includes("not available") && user?.role === 'admin') {
-						// Should not happen if API is updated
-						setError(e.message);
-					} else if (e.message && e.message.includes("not available")) {
-						setError(null);
-					} else {
-						throw e;
-					}
+					// Real unexpected error
+					throw e;
 				}
 			}
 		} catch (err: any) {
@@ -87,9 +82,9 @@ export default function ResultsPage() {
 		);
 	}
 
-	// Election not ended and NOT admin
-	// Display waiting screen only if: Not Ended AND No Results AND (User is NOT Admin OR Admin failed to get results)
-	if (electionStatus && electionStatus.status !== "ENDED" && !results && user?.role !== "admin") {
+	// Election not ended and no results available
+	// Display waiting screen if: Not Ended AND No Results (regardless of role)
+	if (electionStatus && electionStatus.status !== "ENDED" && !results) {
 		return (
 			<main className="min-h-screen py-24 px-6">
 				<div className="max-w-2xl mx-auto text-center">
@@ -525,7 +520,7 @@ function IRVSection({ results, irvData }: { results: ElectionResults | null, irv
 						</div>
 					</div>
 				))}
-				
+
 			</div>
 		</div>
 	);
