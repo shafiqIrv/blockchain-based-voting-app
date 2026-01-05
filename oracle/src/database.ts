@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
+import bcrypt from "bcryptjs";
 
 // Ensure data directory exists
 const dbPath = path.resolve(process.cwd(), "data");
@@ -66,7 +67,7 @@ export class SQLiteDatabase {
             nim: "00000000",
             name: "System Administrator",
             email: "admin@itb.ac.id",
-            password: "admin", // In production, hash this!
+            password: "admin", // Passed as plain text, hashed by createUser
             faculty: "STEI",
             major: "Teknik Informatika",
             campus: "Ganesha",
@@ -89,11 +90,14 @@ export class SQLiteDatabase {
 
     createUser(user: Omit<User, "status" | "role">): { success: boolean; error?: string } {
         try {
+            const salt = bcrypt.genSaltSync(10);
+            const hashedPassword = bcrypt.hashSync(user.password, salt);
+
             const stmt = db.prepare(`
                 INSERT INTO users (nim, name, email, password, faculty, major, campus, entry_year, status, role)
                 VALUES (@nim, @name, @email, @password, @faculty, @major, @campus, @entry_year, 'active', 'voter')
             `);
-            stmt.run(user);
+            stmt.run({ ...user, password: hashedPassword });
             return { success: true };
         } catch (error: any) {
             if (error.code === "SQLITE_CONSTRAINT_PRIMARYKEY") {
@@ -113,7 +117,7 @@ export class SQLiteDatabase {
 
     authenticate(nim: string, password: string): User | null {
         const user = this.getUser(nim);
-        if (user && user.password === password) {
+        if (user && bcrypt.compareSync(password, user.password)) {
             return user;
         }
         return null;

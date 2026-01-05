@@ -130,6 +130,24 @@ pnpm run setup
 -   **Docker permission errors**: Ensure your user is in the `docker` group (Linux) or Docker Desktop is running (Windows/Mac).
 -   **Chaincode install failed**: Check if you have Go installed, as it's required to package the chaincode.
 
+## Database Management
+
+### Backup Oracle Database
+The Oracle service uses a local SQLite database. To create a backup:
+
+```bash
+cd oracle
+pnpm run backup
+```
+
+This will create a timestamped copy in `oracle/data/backups/`.
+
+### Migrate to New Host
+To move the database to a fresh installation:
+1.  Run `pnpm run backup` on the old host.
+2.  Copy the backup file to the new host.
+3.  Place it at `oracle/data/database.sqlite`.
+
 ## Documentation
 
 See [plan.md](./plan.md) for detailed implementation plan and architecture documentation.
