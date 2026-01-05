@@ -105,6 +105,20 @@ The application should now be accessible at `http://localhost:3000`.
 
 ## Troubleshooting
 
+### Restart Network (Preserve Data)
+To restart the blockchain network (peer/orderer containers) *without* losing the ledger data or resetting the setup:
+
+1.  Navigate to the docker directory:
+    ```bash
+    cd network/docker
+    ```
+2.  Start the containers:
+    ```bash
+    docker compose up -d
+    ```
+
+**Warning**: Do NOT run `./network/scripts/setup.sh` or `./network/scripts/network.sh down` if you wish to preserve the data, as these commands will wipe the volumes.
+
 ### Reset Network
 If you encounter blockchain errors or want to start fresh:
 
