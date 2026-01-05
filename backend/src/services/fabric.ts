@@ -105,10 +105,7 @@ export class FabricService {
 
     // --- New Methods ---
 
-    async getResults(electionId: string, bypassTimeCheck: boolean = false): Promise<any> {
-        // Warning: This transaction might fail in chaincode if election is not ended, unless logic handles it.
-        // If chaincode strictly enforces time, bypassTimeCheck won't work unless passed to chaincode.
-        // Assuming chaincode 'getResults' handles the check.
+    async getResults(electionId: string): Promise<any> {
         const result = await this.contract?.evaluateTransaction('getResults', electionId);
         return JSON.parse(result?.toString() || '{}');
     }
