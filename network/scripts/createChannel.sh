@@ -14,13 +14,13 @@ YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
 NC='\033[0m'
 
-echo -e "${YELLOW}Step 4.1: Joining Orderer to votingchannel...${NC}"
+echo -e "${YELLOW}Step 5.1: Joining Orderer to votingchannel...${NC}"
 docker exec cli osnadmin channel join --channelID votingchannel \
   --config-block ./channel-artifacts/votingchannel.block \
   -o orderer.voting.com:7053 --ca-file $ORDERER_CA \
   --client-cert $ADMIN_CERT --client-key $ADMIN_KEY
 
-echo -e "${YELLOW}Step 4.2: Joining ITB peers to the channel...${NC}"
+echo -e "${YELLOW}Step 5.2: Joining ITB peers to the channel...${NC}"
 # Join Peer0 ITB (Default CLI environment)
 docker exec cli peer channel join -b ./channel-artifacts/votingchannel.block
 
@@ -30,7 +30,7 @@ docker exec \
   -e CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/itb.ac.id/peers/peer1.itb.ac.id/tls/ca.crt \
   cli peer channel join -b ./channel-artifacts/votingchannel.block
 
-echo -e "${YELLOW}Step 4.3: Joining KPU peers to the channel...${NC}"
+echo -e "${YELLOW}Step 5.3: Joining KPU peers to the channel...${NC}"
 # Join Peer0 KPU
 docker exec \
   -e CORE_PEER_ADDRESS=peer0.kpu.itb.ac.id:9051 \

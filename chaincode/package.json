@@ -6,15 +6,13 @@
     "scripts": {
         "build": "tsc",
         "start": "fabric-chaincode-node start",
-        "package": "npm run build && npm pack",
-        "postinstall": "npm run build"
+        "package": "npm run build && npm pack"
     },
     "dependencies": {
         "fabric-contract-api": "^2.5.0",
         "fabric-shim": "^2.5.0",
-        "typescript": "^5.6.0"
-    },
-    "devDependencies": {
+        "typescript": "^5.6.0",
         "@types/node": "^22.0.0"
-    }
+    },
+    "devDependencies": {}
 }

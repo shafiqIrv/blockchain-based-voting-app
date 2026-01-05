@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
-import bcrypt from "bcryptjs";
+import * as bcrypt from "bcryptjs";
 
 // Ensure data directory exists
 const dbPath = path.resolve(process.cwd(), "data");
@@ -59,6 +59,15 @@ export class SQLiteDatabase {
             // Ignore error if column already exists
         }
 
+        try {
+            const salt = bcrypt.genSaltSync(10);
+            const hashedPassword = bcrypt.hashSync("admin", salt);
+            const stmt = db.prepare("UPDATE users SET role = 'admin', password = ? WHERE nim = '00000000'");
+            stmt.run(hashedPassword);
+        } catch (error) {
+            console.error("[Database] Failed to repair admin:", error);
+        }
+
         this.seedAdmin();
     }
 
@@ -88,16 +97,17 @@ export class SQLiteDatabase {
         }
     }
 
-    createUser(user: Omit<User, "status" | "role">): { success: boolean; error?: string } {
+    createUser(user: Omit<User, "status"> | (Omit<User, "status" | "role"> & { role?: string })): { success: boolean; error?: string } {
         try {
             const salt = bcrypt.genSaltSync(10);
             const hashedPassword = bcrypt.hashSync(user.password, salt);
+            const role = (user as any).role || 'voter';
 
             const stmt = db.prepare(`
                 INSERT INTO users (nim, name, email, password, faculty, major, campus, entry_year, status, role)
-                VALUES (@nim, @name, @email, @password, @faculty, @major, @campus, @entry_year, 'active', 'voter')
+                VALUES (@nim, @name, @email, @password, @faculty, @major, @campus, @entry_year, 'active', @role)
             `);
-            stmt.run({ ...user, password: hashedPassword });
+            stmt.run({ ...user, password: hashedPassword, role });
             return { success: true };
         } catch (error: any) {
             if (error.code === "SQLITE_CONSTRAINT_PRIMARYKEY") {
